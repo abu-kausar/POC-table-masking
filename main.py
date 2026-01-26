@@ -3,7 +3,7 @@ import cv2
 import easyocr
 import numpy as np
 import matplotlib.pyplot as plt
-from data_extraction.data_extractor import DataExtractor
+from data_extraction.data_extractor_easyocr import DataExtractor
 from masking.masking import mask_texts_from_ocr_data
 from ocr.easy_ocr import EasyOCR
 
