@@ -1,10 +1,11 @@
 from ultralytics import YOLO
 
+
 class UIElementDetector:
   def __init__(self, model_path: str = "assets/best.pt"):
     self.model = YOLO(model_path)
 
-  def detect_ui_elements(self, image_path: str):
+  def predict(self, image_path: str):
     if self.model is None:
       raise RuntimeError("Model not loaded. Call load() first.")
     result = self.model.predict(image_path)
