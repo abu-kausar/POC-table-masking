@@ -1,10 +1,8 @@
 import os
 import cv2
-import numpy as np
+import json
 from data_extraction.data_extraction_tessaract import TessaractDataExtractor
 from data_extraction.data_extractor_easyocr import EasyOcrDataExtractor
-import easyocr
-from ultralytics import YOLO
 
 from utils.merge_ocr_data import merge_ocr_data
 from utils.drawing import annotate_targeted_texts, draw_box_on_all_texts, mask_all_extracted_texts
@@ -20,6 +18,11 @@ if __name__ == "__main__":
     easy_ocr_data = easy_ocr_dex.data_extraction_from_image(img_path)
     tessaract_ocr_data = tessaract_ocr_dex.data_extraction_from_image(img_path)
     processed_data = merge_ocr_data(easy_ocr_data, tessaract_ocr_data, iou_threshold=0.3)
+    
+    # write processed data to further inspection
+    os.makedirs("processed_data", exist_ok=True)
+    with open("processed_data/processed_data.json", "w") as f:
+        json.dump(processed_data, f, indent=4)
     
     # make outputs directory
     output_dir = "outputs"
