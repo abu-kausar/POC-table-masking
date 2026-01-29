@@ -111,6 +111,6 @@ def merge_first_pair_as_header_if_closest(texts):
     }
 
     # Remove first two and insert merged header
-    new_texts = [merged_header] + texts[2:]
+    new_texts = texts[2:]
 
     return new_texts, header_text
