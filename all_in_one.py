@@ -1,10 +1,8 @@
 import os
 import cv2
-import numpy as np
+import json
 from data_extraction.data_extraction_tessaract import TessaractDataExtractor
 from data_extraction.data_extractor_easyocr import EasyOcrDataExtractor
-import easyocr
-from ultralytics import YOLO
 
 from utils.merge_ocr_data import merge_ocr_data, merge_first_pair_as_header_if_closest
 from utils.drawing import annotate_targeted_texts, draw_box_on_all_texts, mask_all_extracted_texts
@@ -36,7 +34,7 @@ def masking_by_header(header_texts: list, processed_data, img_path, output_dir="
     cv2.imwrite(os.path.join(output_dir, f"masked_texts_by_headers.png"), cv2.cvtColor(annotated, cv2.COLOR_RGB2BGR))
     
 def main(headers_text: list):
-    model_path = "assets/20260121_best.pt"
+    model_path = "assets/best.pt"
     easy_ocr_dex = EasyOcrDataExtractor(model_path)
     tessaract_ocr_dex = TessaractDataExtractor(model_path)
     
@@ -49,12 +47,19 @@ def main(headers_text: list):
     processed_data = merge_ocr_data(easy_ocr_data, tessaract_ocr_data, iou_threshold=0.3)
     
     # Step-3: Multiline header resolved
-    processed_data = merge_first_pair_as_header_if_closest(processed_data)
-    
-    # This drawing is optional, just for visualization
+    for item in processed_data:
+        if item["texts"]:
+            item["texts"], item["header"] = merge_first_pair_as_header_if_closest(item["texts"])
+
     # make outputs directory
     output_dir = "outputs"
     os.makedirs(output_dir, exist_ok=True)
+    
+    # save processed data for further testing
+    with open("outputs/processed_data.json", "w") as f:
+        json.dump(processed_data, f, indent=4)
+    
+    # This drawing is optional, just for visualization
     intermediate_drawing(img_path, processed_data)
 
     # Step-4: Targeted masking
