@@ -13,6 +13,7 @@ from masking.mask_all_match_text import search_by_matcher
 class UIElementDetector:
   def __init__(self, model_path: str = "assets/best.pt"):
     self.model = YOLO(model_path)
+    print("Model loaded")
 
   def predict(self, image_path: str):
     if self.model is None:
