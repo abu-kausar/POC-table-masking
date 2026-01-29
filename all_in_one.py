@@ -48,7 +48,7 @@ def main(headers_text: list):
     
     # Step-3: Multiline header resolved
     for item in processed_data:
-        if item["texts"]:
+        if item["texts"] and item["type"] == "table_column": # very weak check for table column
             item["texts"], item["header"] = merge_first_pair_as_header_if_closest(item["texts"])
 
     # make outputs directory
