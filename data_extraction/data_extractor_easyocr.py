@@ -2,16 +2,18 @@
 import os
 import cv2
 import numpy as np
-import pytesseract
-from .data_extractor_easyocr import UIElementDetector
+import easyocr
+from detection.ui_detector import UIElementDetector
+from ocr.base_ocr import BaseOCR
+import easyocr
 
-class TessaractDataExtractor:
+class EasyOcrDataExtractor:
     def __init__(self, model_path: str):
-        self.tesseract_config = "--oem 3 --psm 6"
+        self.reader = easyocr.Reader(['en'])
         self.ui_element_extractor = UIElementDetector(model_path)
 
     # -----------------------------
-    # Helper: box utils
+    # Helper: box utilities
     # -----------------------------
     @staticmethod
     def box_to_xyxy(box):
@@ -38,7 +40,6 @@ class TessaractDataExtractor:
         union = max(x2, x2b) - min(x1, x1b)
 
         return inter / union if union > 0 else 0
-
 
     # -----------------------------
     # Merge vertical aligned texts
@@ -102,7 +103,6 @@ class TessaractDataExtractor:
             })
 
         return merged_texts
-
 
     # -----------------------------
     # Merge horizontally aligned texts
@@ -171,7 +171,7 @@ class TessaractDataExtractor:
         for i, item in enumerate(extracted_data):
             processed_data.append({
                 "uid": i + 1,
-                "box": item["box"],        # [x1, y1, x2, y2]
+                "box": item["box"],
                 "texts": [],
                 "header": "",
                 "type": item["label"]
@@ -198,37 +198,15 @@ class TessaractDataExtractor:
                 item["texts"] = []
                 continue
 
-            gray = cv2.cvtColor(cropped_image, cv2.COLOR_BGR2GRAY)
-
-            data = pytesseract.image_to_data(
-                gray,
-                config=self.tesseract_config,
-                output_type=pytesseract.Output.DICT
-            )
+            # Apply EasyOCR
+            ocr_results = self.reader.readtext(cropped_image)
 
             raw_texts = []
-
-            for i in range(len(data["text"])):
-                text = data["text"][i].strip()
-                conf = int(data["conf"][i])
-
-                if not text or conf < 0:
-                    continue
-
-                x = int(data["left"][i])
-                y = int(data["top"][i])
-                w = int(data["width"][i])
-                h = int(data["height"][i])
-
+            for bbox, text, prob in ocr_results:
                 raw_texts.append({
-                    "box": [
-                        [x, y],
-                        [x + w, y],
-                        [x + w, y + h],
-                        [x, y + h]
-                    ],
+                    "box": bbox,
                     "text": text,
-                    "prob": conf / 100.0
+                    "prob": prob
                 })
 
             # 🔗 MERGE HORIZONTAL LINES HERE
