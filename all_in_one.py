@@ -4,7 +4,7 @@ import json
 from data_extraction.data_extraction_tessaract import TessaractDataExtractor
 from data_extraction.data_extractor_easyocr import EasyOcrDataExtractor
 
-from utils.merge_ocr_data import merge_ocr_data, merge_first_pair_as_header_if_closest
+from utils.merge_ocr_data import merge_ocr_data, detect_and_merge_header_by_row_gap
 from utils.drawing import annotate_targeted_texts, draw_box_on_all_texts, mask_all_extracted_texts
 from masking.masking_by_header import search_text_by_header
 from masking.mask_all_match_text import search_by_matcher
@@ -33,12 +33,11 @@ def masking_by_header(header_texts: list, processed_data, img_path, output_dir="
     # save masking image
     cv2.imwrite(os.path.join(output_dir, f"masked_texts_by_headers.png"), cv2.cvtColor(annotated, cv2.COLOR_RGB2BGR))
     
-def main(headers_text: list):
+def main(headers_text: list, img_path: str):
     model_path = "assets/best.pt"
     easy_ocr_dex = EasyOcrDataExtractor(model_path)
     tessaract_ocr_dex = TessaractDataExtractor(model_path)
     
-    img_path = "src/images/ss-1.jpeg"
     # Step-1: Extract data from both OCRs
     easy_ocr_data = easy_ocr_dex.data_extraction_from_image(img_path)
     tessaract_ocr_data = tessaract_ocr_dex.data_extraction_from_image(img_path)
@@ -49,7 +48,7 @@ def main(headers_text: list):
     # Step-3: Multiline header resolved
     for item in processed_data:
         if item["texts"] and item["type"] == "table_column": # very weak check for table column
-            item["texts"], item["header"] = merge_first_pair_as_header_if_closest(item["texts"])
+            item["texts"], item["header"] = detect_and_merge_header_by_row_gap(item["texts"])
 
     # make outputs directory
     output_dir = "outputs"
@@ -76,5 +75,6 @@ def main(headers_text: list):
 if __name__ == "__main__":
     
     headers_text = ["Description"]
-    
-    main(headers_text)
+    image_path = "src/images/ss-1.jpeg"
+
+    main(headers_text, image_path)
