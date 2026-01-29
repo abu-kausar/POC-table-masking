@@ -57,4 +57,60 @@ def merge_ocr_data(easy_ocr_data: list, tessaract_ocr_data: list, iou_threshold:
 
     return merged_data
 
-print("Function `merge_ocr_data` defined.")
+def merge_first_pair_as_header_if_closest(texts):
+    """
+    Merge texts[0] and texts[1] into a header ONLY IF
+    their vertical gap is the minimum among all consecutive pairs.
+    Preserves line breaks.
+    """
+
+    if len(texts) < 2:
+        return texts, ""
+
+    def box_to_xyxy(box):
+        xs = [p[0] for p in box]
+        ys = [p[1] for p in box]
+        return min(xs), min(ys), max(xs), max(ys)
+
+    gaps = []
+
+    for i in range(len(texts) - 1):
+        _, y1_1, _, y2_1 = box_to_xyxy(texts[i]["box"])
+        _, y1_2, _, _ = box_to_xyxy(texts[i + 1]["box"])
+
+        gap = max(0, y1_2 - y2_1)
+        gaps.append((gap, i))
+
+    # Find minimum gap
+    min_gap, min_index = min(gaps, key=lambda x: x[0])
+
+    # ✅ Only merge if first pair is closest
+    if min_index != 0:
+        return texts, texts[0]["text"]
+
+    # Merge first two
+    t1, t2 = texts[0], texts[1]
+
+    x1_1, y1_1, x2_1, y2_1 = box_to_xyxy(t1["box"])
+    x1_2, y1_2, x2_2, y2_2 = box_to_xyxy(t2["box"])
+
+    merged_box = [
+        [min(x1_1, x1_2), min(y1_1, y1_2)],
+        [max(x2_1, x2_2), min(y1_1, y1_2)],
+        [max(x2_1, x2_2), max(y2_1, y2_2)],
+        [min(x1_1, x1_2), max(y2_1, y2_2)]
+    ]
+
+    header_text = t1["text"] + " " + t2["text"]
+    header_prob = max(t1["prob"], t2["prob"])
+
+    merged_header = {
+        "box": merged_box,
+        "text": header_text,
+        "prob": header_prob
+    }
+
+    # Remove first two and insert merged header
+    new_texts = texts[2:]
+
+    return new_texts, header_text
