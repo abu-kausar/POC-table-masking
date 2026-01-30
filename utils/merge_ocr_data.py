@@ -79,7 +79,7 @@ def detect_and_merge_header_by_row_gap(texts, tolerance_ratio=0.35):
         return texts[1:], texts[0]["text"]
 
     # Estimate row gap (ignore first)
-    row_gap = statistics.median(gaps[1:])
+    row_gap = min(gaps[1:])
     first_gap = gaps[0]
 
     tolerance = row_gap * tolerance_ratio
