@@ -85,7 +85,7 @@ def detect_and_merge_header_by_row_gap(texts, tolerance_ratio=0.35):
     tolerance = min_row_gap * tolerance_ratio
 
     # Decide
-    if first_gap < min_row_gap:
+    if first_gap > min_row_gap:
         # first line behaves like a row → single-line header
         return texts[1:], texts[0]["text"]
 
