@@ -120,8 +120,10 @@ def search_text_by_header(
     header_name,
     match_threshold=0.7
 ):
+    print("="*20)
+    print(f"Searching texts under header: '{header_name}' with match threshold: {match_threshold}\n")
     if processed_data is None or not processed_data:
-        print("No processed data available.")
+        print("No processed data available.\n")
         return []
     # first attempt
     texts = searching_attemp(
@@ -133,7 +135,7 @@ def search_text_by_header(
     if texts:
         return texts
     else:
-        print("First attempt failed, trying with concatenated header...")
+        print("First attempt failed, trying with concatenated header.....\n")
         # take first item from processed_data and concanate it search term
         if processed_data[0]["texts"]:
             first_text = processed_data[0]["texts"][0]["text"]
@@ -145,9 +147,13 @@ def search_text_by_header(
             )
     # make third attempt if still not found
     if texts:
+        # since found in second attempt
+        # delete first element texts to avoid duplicate masking
+        texts = texts[1:]
         return texts
     else:
-        print("Second attempt failed, trying with decreasing match threshold...")
+        print("Second attempt failed, trying with decreasing match threshold...\n")
+        print("="*20)
         # Decrease the match threshold and try again
         for new_threshold in [0.6, 0.5]:
             texts = searching_attemp(

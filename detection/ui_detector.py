@@ -4,7 +4,6 @@ from ultralytics import YOLO
 class UIElementDetector:
   def __init__(self, model_path: str = "assets/best.pt"):
     self.model = YOLO(model_path)
-    print(f"Model loaded from: {model_path}")
 
   def predict(self, image_path: str):
     if self.model is None:

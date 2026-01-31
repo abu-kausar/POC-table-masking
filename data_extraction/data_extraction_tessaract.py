@@ -243,7 +243,7 @@ class TessaractDataExtractor:
             print(f"Error: Could not load image from {img_path}")
             return processed_data
         
-        print("Performing Tesseract OCR on detected UI elements...")
+        print("Performing Tesseract OCR on detected UI elements...\n")
         
         for item in processed_data:
             x1, y1, x2, y2 = map(int, item["box"])
