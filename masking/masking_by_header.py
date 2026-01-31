@@ -213,11 +213,7 @@ def searching_attemp(
                 continue
 
             text_content = text_info["text"]
-            
-            if flag and first_text == text_content:
-                flag = False
-                continue
-
+    
             # Skip if this text is basically the header itself
             header_match = ocr_text_match(
                 expected_text=raw_header,
