@@ -118,10 +118,36 @@ def find_best_match(target_text, ocr_text_list, threshold=0.5):
 def search_text_by_header(
     processed_data,
     header_name,
-    match_threshold=0.8
+    match_threshold=0.7
 ):
-    texts = []
+    # first attempt
+    texts = searching_attemp(
+        processed_data,
+        header_name,
+        match_threshold
+    )
+    # second attemp if not found
+    if texts:
+        return texts
+    else:
+        # take first item from processed_data and concanate it search term
+        if processed_data:
+            first_text = processed_data[0]["texts"][0]["text"]
+            combined_header = f"{first_text} {header_name}"
+            texts = searching_attemp(
+                processed_data,
+                combined_header,
+                match_threshold
+            )
 
+    return texts
+
+def searching_attemp(
+    processed_data,
+    header_name,
+    match_threshold=0.7
+) -> list:
+    texts = []
     normalized_target = normalize_text(header_name)
 
     for item in processed_data:

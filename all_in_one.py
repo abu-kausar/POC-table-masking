@@ -26,7 +26,7 @@ def masking_by_header(header_texts: list, processed_data, img_path, output_dir="
     # multiple headers may be provided, mask each one by one and show in single image
     texts_to_annotate = []
     for header_text in header_texts:
-        texts = search_text_by_header(processed_data, header_text)
+        texts = search_text_by_header(processed_data, header_text, match_threshold=0.7)
         texts_to_annotate.extend(texts)
 
     annotated = annotate_targeted_texts(img_path, texts_to_annotate, draw_bbox=True, fill_bbox_white=True)
