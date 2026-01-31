@@ -118,7 +118,7 @@ def find_best_match(target_text, ocr_text_list, threshold=0.5):
 def search_text_by_header(
     processed_data,
     header_name,
-    match_threshold=0.6
+    match_threshold=0.8
 ):
     texts = []
 

@@ -106,10 +106,10 @@ def merge_ocr_data(
                 if is_same_text(tess_box, easy_box, iou_threshold):
                     overlap_found = True
 
-                    print(
-                        f"overlapping: tess_text: {tess_text['text']} "
-                        f"==== easy_text: {easy_item['texts'][idx]['text']}"
-                    )
+                    # print(
+                    #     f"overlapping: tess_text: {tess_text['text']} "
+                    #     f"==== easy_text: {easy_item['texts'][idx]['text']}"
+                    # )
 
                     # # Optional: replace EasyOCR if Tesseract is more confident
                     # if tess_text.get("prob", 0) > easy_item["texts"][idx].get("prob", 0):
@@ -142,3 +142,50 @@ def merge_ocr_data(
     return merged_data
 
 
+def detect_and_merge_header_by_row_gap(texts, tolerance_ratio=0.35):
+    if len(texts) < 2:
+        return texts, ""
+
+    def box_to_xyxy(box):
+        xs = [p[0] for p in box]
+        ys = [p[1] for p in box]
+        return min(xs), min(ys), max(xs), max(ys)
+
+    # Compute gaps
+    gaps = []
+    for i in range(len(texts) - 1):
+        _, _, _, y2 = box_to_xyxy(texts[i]["box"])
+        _, y1, _, _ = box_to_xyxy(texts[i+1]["box"])
+        gaps.append(max(0, y1 - y2))
+
+    if len(gaps) < 2:
+        return texts[1:], texts[0]["text"]
+
+    # Estimate row gap (ignore first)
+    min_row_gap = min(gaps[1:])
+    first_gap = gaps[0]
+
+    tolerance = min_row_gap * tolerance_ratio
+
+    # Decide
+    if first_gap > min_row_gap:
+        # first line behaves like a row → single-line header
+        return texts[1:], texts[0]["text"]
+
+    # Multi-line header → merge first two
+    t1, t2 = texts[0], texts[1]
+
+    x1_1, y1_1, x2_1, y2_1 = box_to_xyxy(t1["box"])
+    x1_2, y1_2, x2_2, y2_2 = box_to_xyxy(t2["box"])
+
+    merged_box = [
+        [min(x1_1, x1_2), min(y1_1, y1_2)],
+        [max(x2_1, x2_2), min(y1_1, y1_2)],
+        [max(x2_1, x2_2), max(y2_1, y2_2)],
+        [min(x1_1, x1_2), max(y2_1, y2_2)]
+    ]
+
+    header_text = t1["text"] + " " + t2["text"]
+    header_prob = max(t1["prob"], t2["prob"])
+
+    return texts[2:], header_text

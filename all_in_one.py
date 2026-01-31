@@ -56,15 +56,6 @@ def main(headers_text: list, img_path: str):
     for item in processed_data:
         if item["texts"]:
             item["texts"] = item["texts"][1:]
-    # draw intermediate ocr data
-    text_box_annotation = draw_box_on_all_texts(img_path, processed_data, True, False)
-    cv2.imwrite("outputs/text_box_annotation.png", text_box_annotation)
-    # print("text annotation saved in path: outputs/text_box_annotation.png")
-
-    # # Step-3: Multiline header resolved
-    # for item in processed_data:
-    #     if item["texts"] and item["type"] == "table_column": # very weak check for table column
-    #         item["texts"], item["header"] = detect_and_merge_header_by_row_gap(item["texts"])
 
     # save processed data for further testing
     with open("outputs/processed_data.json", "w") as f:
