@@ -138,12 +138,12 @@ def search_text_by_header(
         print("First attempt failed, trying with concatenated header.....\n")
         # take first item from processed_data and concanate it search term
         if processed_data[0]["texts"]:
-            first_text = processed_data[0]["texts"][0]["text"]
             print(f"Trying with combined header..........\n")
             texts = searching_attemp(
                 processed_data,
                 header_name,
-                match_threshold
+                match_threshold,
+                is_combined=True
             )
     # make third attempt if still not found
     if texts:
@@ -155,7 +155,7 @@ def search_text_by_header(
         print("Second attempt failed, trying with decreasing match threshold...\n")
         print("="*20)
         # Decrease the match threshold and try again
-        for new_threshold in [0.6, 0.5]:
+        for new_threshold in [0.65, 0.60, 0.55, 0.50]:
             print(f"Trying with match threshold: {new_threshold}\n")
             
             texts = searching_attemp(
