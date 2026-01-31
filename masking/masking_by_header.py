@@ -135,7 +135,6 @@ def search_text_by_header(
     if texts:
         return texts
     else:
-        print("First attempt failed, trying with concatenated header.....\n")
         # take first item from processed_data and concanate it search term
         if processed_data[0]["texts"]:
             print(f"Trying with combined header..........\n")
@@ -208,15 +207,16 @@ def searching_attemp(
 
         # if combined match, skip first text as it is part of header
         flag = True if is_combined else False
+        
         for text_info in item["texts"]:
             if "text" not in text_info or "box" not in text_info:
                 continue
 
-            if flag:
+            text_content = text_info["text"]
+            
+            if flag and first_text == text_content:
                 flag = False
                 continue
-
-            text_content = text_info["text"]
 
             # Skip if this text is basically the header itself
             header_match = ocr_text_match(
