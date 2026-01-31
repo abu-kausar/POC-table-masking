@@ -263,6 +263,7 @@ class TessaractDataExtractor:
 
             for i in range(len(data["text"])):
                 text = data["text"][i].strip()
+                # print(f"pytessarct text: {text}")
                 conf = int(data["conf"][i])
 
                 if not text or conf < 0:
@@ -285,13 +286,34 @@ class TessaractDataExtractor:
                 })
 
             # 🔗 MERGE HORIZONTAL LINES HERE
-            line_texts = self.merge_horizontal_texts(raw_texts)
-            final_texts = self.merge_vertical_texts(line_texts)
-            item["texts"] = final_texts
+            # line_texts = self.merge_horizontal_texts(raw_texts)
+            # final_texts = self.merge_vertical_texts(line_texts)
+            item["texts"] = raw_texts
+        # Sort the each texts to find the header
+        # -------------------------------------
+        
+        for item in processed_data:
+            texts = item.get("texts", [])
+            if not texts:
+                continue
+
+            if item["type"] == "text_field":
+                # Left → Right
+                item["texts"] = sorted(
+                    texts,
+                    key=lambda t: self.box_to_xyxy(t["box"])[0]  # x1
+                )
+            else:
+                # Top → Bottom
+                item["texts"] = sorted(
+                    texts,
+                    key=lambda t: self.box_to_xyxy(t["box"])[1]  # y1
+                )
 
         # Header selection
         for item in processed_data:
             if item["texts"]:
                 item["header"] = item["texts"][0]["text"]
+                item["texts"] = item["texts"][:]
 
         return processed_data
