@@ -139,11 +139,10 @@ def search_text_by_header(
         # take first item from processed_data and concanate it search term
         if processed_data[0]["texts"]:
             first_text = processed_data[0]["texts"][0]["text"]
-            combined_header = f"{header_name} {first_text}"
-            print(f"Trying with combined header: '{combined_header}'\n")
+            print(f"Trying with combined header..........\n")
             texts = searching_attemp(
                 processed_data,
-                combined_header,
+                header_name,
                 match_threshold
             )
     # make third attempt if still not found
@@ -175,13 +174,17 @@ def search_text_by_header(
 def searching_attemp(
     processed_data,
     header_name,
-    match_threshold=0.7
+    match_threshold=0.7,
+    is_combined=False
 ) -> list:
     texts = []
     normalized_target = normalize_text(header_name)
 
     for item in processed_data:
         raw_header = item.get("header", "").strip()
+        first_text = item['texts'][0]['text'] if item['texts'] else ""
+        if is_combined:
+            raw_header = f"{raw_header} {first_text}" if item["texts"] else raw_header
 
         if not raw_header:
             continue
