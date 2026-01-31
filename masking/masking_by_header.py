@@ -139,7 +139,7 @@ def search_text_by_header(
         # take first item from processed_data and concanate it search term
         if processed_data[0]["texts"]:
             first_text = processed_data[0]["texts"][0]["text"]
-            combined_header = f"{header_name}_{first_text}"
+            combined_header = f"{header_name} {first_text}"
             print(f"Trying with combined header: '{combined_header}'\n")
             texts = searching_attemp(
                 processed_data,
