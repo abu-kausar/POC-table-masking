@@ -2,9 +2,7 @@
 import os
 import cv2
 import numpy as np
-import easyocr
 from detection.ui_detector import UIElementDetector
-from ocr.base_ocr import BaseOCR
 import easyocr
 
 class EasyOcrDataExtractor:
@@ -107,59 +105,113 @@ class EasyOcrDataExtractor:
     # -----------------------------
     # Merge horizontally aligned texts
     # -----------------------------
-    def merge_horizontal_texts(self, texts, line_threshold=8):
-        if not texts:
-            return []
+    def merge_horizontal_texts(
+      self,
+      texts,
+      line_threshold=8,
+      max_gap_ratio=1.5
+    ):
+      """
+      Merge horizontally aligned OCR texts into line-level boxes.
 
-        items = []
-        for t in texts:
-            x1, y1, x2, y2 = self.box_to_xyxy(t["box"])
-            y_center = (y1 + y2) / 2
+      Rules:
+      - Texts must be vertically aligned (same line)
+      - Horizontal gap must be small relative to character width
+      """
 
-            items.append({
-                "orig": t,
-                "x1": x1, "y1": y1, "x2": x2, "y2": y2,
-                "y_center": y_center
-            })
+      if not texts:
+          return []
 
-        # Sort top → bottom, left → right
-        items.sort(key=lambda i: (i["y_center"], i["x1"]))
+      # -------- Step 1: Normalize boxes --------
+      items = []
+      for t in texts:
+          x1, y1, x2, y2 = self.box_to_xyxy(t["box"])
+          y_center = (y1 + y2) / 2
 
-        lines = []
+          items.append({
+              "orig": t,
+              "x1": x1,
+              "y1": y1,
+              "x2": x2,
+              "y2": y2,
+              "y_center": y_center
+          })
 
-        for item in items:
-            if not lines:
-                lines.append([item])
-                continue
+      # -------- Step 2: Sort (top → bottom, left → right) --------
+      items.sort(key=lambda i: (i["y_center"], i["x1"]))
 
-            last_line = lines[-1]
-            last_y = last_line[0]["y_center"]
+      lines = []
 
-            if abs(item["y_center"] - last_y) <= line_threshold:
-                last_line.append(item)
-            else:
-                lines.append([item])
+      # -------- Step 3: Line grouping with gap check --------
+      for item in items:
+          if not lines:
+              lines.append([item])
+              continue
 
-        merged_texts = []
+          last_line = lines[-1]
+          last_item = last_line[-1]
 
-        for line in lines:
-            line.sort(key=lambda i: i["x1"])
+          # Vertical alignment check
+          same_line = abs(item["y_center"] - last_item["y_center"]) <= line_threshold
 
-            x1 = min(i["x1"] for i in line)
-            y1 = min(i["y1"] for i in line)
-            x2 = max(i["x2"] for i in line)
-            y2 = max(i["y2"] for i in line)
+          if same_line:
+              # Horizontal gap check
+              horizontal_gap = item["x1"] - last_item["x2"]
 
-            text = " ".join(i["orig"]["text"] for i in line)
-            prob = max(i["orig"]["prob"] for i in line)
+              last_width = last_item["x2"] - last_item["x1"]
+              char_width = last_width / max(len(last_item["orig"]["text"]), 1)
 
-            merged_texts.append({
-                "box": self.xyxy_to_box(x1, y1, x2, y2),
-                "text": text,
-                "prob": float(prob)
-            })
+              if horizontal_gap <= char_width * max_gap_ratio:
+                  last_line.append(item)
+              else:
+                  lines.append([item])
+          else:
+              lines.append([item])
 
-        return merged_texts
+      # -------- Step 4: Merge boxes & texts --------
+      merged_texts = []
+
+      for line in lines:
+          line.sort(key=lambda i: i["x1"])
+
+          x1 = min(i["x1"] for i in line)
+          y1 = min(i["y1"] for i in line)
+          x2 = max(i["x2"] for i in line)
+          y2 = max(i["y2"] for i in line)
+
+          # Smart space insertion
+          text_parts = []
+          for i, curr in enumerate(line):
+              if i > 0:
+                  prev = line[i - 1]
+                  gap = curr["x1"] - prev["x2"]
+
+                  prev_char_width = (
+                      (prev["x2"] - prev["x1"]) /
+                      max(len(prev["orig"]["text"]), 1)
+                  )
+
+                  if gap > prev_char_width:
+                      text_parts.append(" ")
+
+              text_parts.append(curr["orig"]["text"])
+
+          text = "".join(text_parts)
+
+          # Probability aggregation (length-weighted)
+          prob = sum(
+              len(i["orig"]["text"]) * i["orig"]["prob"]
+              for i in line
+          ) / sum(len(i["orig"]["text"]) for i in line)
+
+          merged_texts.append({
+              "box": self.xyxy_to_box(x1, y1, x2, y2),
+              "text": text,
+              "prob": float(prob)
+          })
+
+      return merged_texts
+
 
     # -----------------------------
     # UI detection
@@ -190,6 +242,8 @@ class EasyOcrDataExtractor:
             print(f"Error: Could not load image from {img_path}")
             return processed_data
 
+        print("Performing EasyOCR on detected UI elements...\n")
+        
         for item in processed_data:
             x1, y1, x2, y2 = map(int, item["box"])
             cropped_image = original_image[y1:y2, x1:x2]
@@ -203,20 +257,44 @@ class EasyOcrDataExtractor:
 
             raw_texts = []
             for bbox, text, prob in ocr_results:
+                # print(f"easyOcr text: {text}")
                 raw_texts.append({
-                    "box": bbox,
+                    "box": [[float(x), float(y)] for [x,y] in bbox],
                     "text": text,
                     "prob": prob
                 })
 
             # 🔗 MERGE HORIZONTAL LINES HERE
-            line_texts = self.merge_horizontal_texts(raw_texts)
-            final_texts = self.merge_vertical_texts(line_texts)
-            item["texts"] = final_texts
+            # line_texts = self.merge_horizontal_texts(raw_texts)
+            # final_texts = self.merge_vertical_texts(line_texts)
+            item["texts"] = raw_texts
 
+        # Sort the each texts to find the header
+        # -------------------------------------
+
+        for item in processed_data:
+            texts = item.get("texts", [])
+            if not texts:
+                continue
+
+            if item["type"] == "text_field":
+                # Left → Right
+                item["texts"] = sorted(
+                    texts,
+                    key=lambda t: self.box_to_xyxy(t["box"])[0]  # x1
+                )
+            else:
+                # Top → Bottom
+                item["texts"] = sorted(
+                    texts,
+                    key=lambda t: self.box_to_xyxy(t["box"])[1]  # y1
+                )
+      
         # Header selection
         for item in processed_data:
             if item["texts"]:
                 item["header"] = item["texts"][0]["text"]
+                item["texts"] = item["texts"][:]
+
 
         return processed_data
