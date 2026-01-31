@@ -242,7 +242,9 @@ class TessaractDataExtractor:
         if original_image is None:
             print(f"Error: Could not load image from {img_path}")
             return processed_data
-
+        
+        print("Performing Tesseract OCR on detected UI elements...")
+        
         for item in processed_data:
             x1, y1, x2, y2 = map(int, item["box"])
             cropped_image = original_image[y1:y2, x1:x2]
@@ -252,7 +254,6 @@ class TessaractDataExtractor:
                 continue
 
             gray = cv2.cvtColor(cropped_image, cv2.COLOR_BGR2GRAY)
-
             data = pytesseract.image_to_data(
                 gray,
                 config=self.tesseract_config,

@@ -242,6 +242,8 @@ class EasyOcrDataExtractor:
             print(f"Error: Could not load image from {img_path}")
             return processed_data
 
+        print("Performing EasyOCR on detected UI elements...")
+        
         for item in processed_data:
             x1, y1, x2, y2 = map(int, item["box"])
             cropped_image = original_image[y1:y2, x1:x2]
