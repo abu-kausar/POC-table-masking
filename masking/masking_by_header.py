@@ -135,16 +135,14 @@ def search_text_by_header(
     if texts:
         return texts
     else:
-        print("First attempt failed, trying with concatenated header.....\n")
         # take first item from processed_data and concanate it search term
         if processed_data[0]["texts"]:
-            first_text = processed_data[0]["texts"][0]["text"]
-            combined_header = f"{header_name} {first_text}"
-            print(f"Trying with combined header: '{combined_header}'\n")
+            print(f"Trying with combined header..........\n")
             texts = searching_attemp(
                 processed_data,
-                combined_header,
-                match_threshold
+                header_name,
+                match_threshold,
+                is_combined=True
             )
     # make third attempt if still not found
     if texts:
@@ -156,7 +154,7 @@ def search_text_by_header(
         print("Second attempt failed, trying with decreasing match threshold...\n")
         print("="*20)
         # Decrease the match threshold and try again
-        for new_threshold in [0.6, 0.5]:
+        for new_threshold in [0.65, 0.60, 0.55, 0.50]:
             print(f"Trying with match threshold: {new_threshold}\n")
             
             texts = searching_attemp(
@@ -175,13 +173,17 @@ def search_text_by_header(
 def searching_attemp(
     processed_data,
     header_name,
-    match_threshold=0.7
+    match_threshold=0.7,
+    is_combined=False
 ) -> list:
     texts = []
     normalized_target = normalize_text(header_name)
 
     for item in processed_data:
         raw_header = item.get("header", "").strip()
+        first_text = item['texts'][0]['text'] if item['texts'] else ""
+        if is_combined:
+            raw_header = f"{raw_header} {first_text}" if item["texts"] else raw_header
 
         if not raw_header:
             continue
@@ -203,12 +205,15 @@ def searching_attemp(
         # --------------------------------------------------
         parent_x1, parent_y1, _, _ = item["box"]
 
+        # if combined match, skip first text as it is part of header
+        flag = True if is_combined else False
+        
         for text_info in item["texts"]:
             if "text" not in text_info or "box" not in text_info:
                 continue
 
             text_content = text_info["text"]
-
+    
             # Skip if this text is basically the header itself
             header_match = ocr_text_match(
                 expected_text=raw_header,
