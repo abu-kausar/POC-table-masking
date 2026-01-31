@@ -9,7 +9,7 @@ class UIElementDetector:
   def predict(self, image_path: str):
     if self.model is None:
       raise RuntimeError("Model not loaded. Call load() first.")
-    result = self.model.predict(image_path)
+    result = self.model.predict(image_path, verbose=False)
 
     extracted_data = []
     CLASS_NAMES = {
