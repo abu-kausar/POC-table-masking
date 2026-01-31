@@ -1,63 +1,146 @@
 import copy
+import numpy as np
+from typing import List, Dict, Tuple
 
-from utils.helper import compute_iou, easyocr_bbox_to_xyxy
 
-def merge_ocr_data(easy_ocr_data: list, tessaract_ocr_data: list, iou_threshold: float = 0.3) -> list:
-    """Merges text detections from EasyOCR and Tesseract OCR, adding Tesseract detections
-    that are not sufficiently covered by EasyOCR detections.
-
-    Args:
-        easy_ocr_data (list): List of processed data from EasyOCR.
-        tessaract_ocr_data (list): List of processed data from Tesseract OCR.
-        iou_threshold (float): IOU threshold to determine if a Tesseract detection
-                                is already covered by an EasyOCR detection.
-
-    Returns:
-        list: Merged OCR data.
+# -----------------------------
+# Box utilities
+# -----------------------------
+def bbox_to_xyxy(box: List[List[float]]) -> Tuple[float, float, float, float]:
     """
-    # Create a deep copy of easy_ocr_data to store the merged results
+    Converts a 4-point polygon box to (x1, y1, x2, y2)
+    """
+    xs = [p[0] for p in box]
+    ys = [p[1] for p in box]
+    return min(xs), min(ys), max(xs), max(ys)
+
+def coverage_ratio(small, large):
+    sx1, sy1, sx2, sy2 = small
+    lx1, ly1, lx2, ly2 = large
+
+    inter_w = max(0, min(sx2, lx2) - max(sx1, lx1))
+    inter_h = max(0, min(sy2, ly2) - max(sy1, ly1))
+    inter = inter_w * inter_h
+
+    small_area = max(0, sx2 - sx1) * max(0, sy2 - sy1)
+    return inter / small_area if small_area > 0 else 0.0
+
+
+def compute_iou(a: Tuple[float, float, float, float],
+                b: Tuple[float, float, float, float]) -> float:
+    """
+    Computes IOU between two xyxy boxes
+    """
+    ax1, ay1, ax2, ay2 = a
+    bx1, by1, bx2, by2 = b
+
+    inter_w = max(0, min(ax2, bx2) - max(ax1, bx1))
+    inter_h = max(0, min(ay2, by2) - max(ay1, by1))
+    inter = inter_w * inter_h
+
+    area_a = max(0, ax2 - ax1) * max(0, ay2 - ay1)
+    area_b = max(0, bx2 - bx1) * max(0, by2 - by1)
+
+    union = area_a + area_b - inter
+    return inter / union if union > 0 else 0.0
+
+
+def vertical_overlap_ratio(a, b) -> float:
+    """
+    Measures vertical alignment between two boxes
+    """
+    ay1, ay2 = a[1], a[3]
+    by1, by2 = b[1], b[3]
+
+    overlap = max(0, min(ay2, by2) - max(ay1, by1))
+    min_h = min(ay2 - ay1, by2 - by1)
+
+    return overlap / min_h if min_h > 0 else 0.0
+
+
+def is_same_text(a, b, iou_thresh=0.3, y_overlap_thresh=0.6) -> bool:
+    """
+    Determines whether two boxes represent the same text
+    """
+    return (
+        coverage_ratio(a, b) > iou_thresh or
+        coverage_ratio(b, a) > iou_thresh
+        # or vertical_overlap_ratio(a, b) >= y_overlap_thresh
+    )
+
+
+# -----------------------------
+# JSON-safe numeric conversion
+# -----------------------------
+def to_python_number(x):
+    if isinstance(x, np.generic):
+        return x.item()
+    return x
+
+
+def merge_ocr_data(
+    easy_ocr_data,
+    tesseract_ocr_data,
+    iou_threshold=0.1
+):
     merged_data = copy.deepcopy(easy_ocr_data)
+    tess_map = {item["uid"]: item for item in tesseract_ocr_data}
 
-    # Convert Tesseract data to a dictionary for easier lookup by uid
-    tessaract_data_map = {item['uid']: item for item in tessaract_ocr_data}
+    for easy_item in merged_data:
+        tess_item = tess_map.get(easy_item["uid"])
+        if not tess_item:
+            continue
 
-    # Iterate through each item in the copied easy_ocr_data
-    for easy_ocr_item in merged_data:
-        uid = easy_ocr_item['uid']
-
-        # Find the corresponding tessaract_ocr_item
-        tessaract_ocr_item = tessaract_data_map.get(uid)
-        if tessaract_ocr_item is None:
-            continue # Skip if no matching Tesseract item
-
-        # Extract existing texts from easy_ocr_item and convert their bounding boxes to xyxy format
-        easy_ocr_boxes_xyxy = [
-            easyocr_bbox_to_xyxy(text_info['box']) 
-            for text_info in easy_ocr_item['texts']
+        # Cache EasyOCR boxes
+        easy_boxes = [
+            bbox_to_xyxy(t["box"]) for t in easy_item["texts"]
         ]
 
-        # For each text entry in tessaract_ocr_item['texts']
-        for tess_text_info in tessaract_ocr_item['texts']:
-            # Convert its bounding box to xyxy format
-            tess_box_xyxy = easyocr_bbox_to_xyxy(tess_text_info['box'])
+        # 👉 iterate over a COPY
+        for tess_text in tess_item["texts"][:]:
+            tess_box = bbox_to_xyxy(tess_text["box"])
 
-            is_duplicate = False
-            # Iterate through EasyOCR bounding boxes and compute IOU
-            for easy_box_xyxy in easy_ocr_boxes_xyxy:
-                if compute_iou(tess_box_xyxy, easy_box_xyxy) > iou_threshold:
-                    is_duplicate = True
+            overlap_found = False
+
+            for idx, easy_box in enumerate(easy_boxes):
+                if is_same_text(tess_box, easy_box, iou_threshold):
+                    overlap_found = True
+
+                    # print(
+                    #     f"overlapping: tess_text: {tess_text['text']} "
+                    #     f"==== easy_text: {easy_item['texts'][idx]['text']}"
+                    # )
+
+                    # # Optional: replace EasyOCR if Tesseract is more confident
+                    # if tess_text.get("prob", 0) > easy_item["texts"][idx].get("prob", 0):
+                    #     easy_item["texts"][idx]["text"] = tess_text["text"]
+                    #     easy_item["texts"][idx]["prob"] = float(tess_text.get("prob", 0))
+
+                    # ✅ REMOVE from Tesseract once matched
+                    tess_item["texts"].remove(tess_text)
                     break
 
-            # If not a duplicate, append the Tesseract text entry
-            if not is_duplicate:
-                easy_ocr_item['texts'].append(tess_text_info)
+            # If NO overlap → append & also remove from Tesseract
+            if not overlap_found:
+                easy_item["texts"].append({
+                    "box": tess_text["box"],
+                    "text": tess_text["text"],
+                    "prob": float(tess_text.get("prob", 0))
+                })
+                easy_boxes.append(tess_box)
 
-        # Sort the easy_ocr_item['texts'] list after merging
-        easy_ocr_item['texts'].sort(key=lambda x: (x['box'][0][1], x['box'][0][0]))
+                tess_item["texts"].remove(tess_text)
+
+        # Stable reading order
+        easy_item["texts"].sort(
+            key=lambda t: (
+                min(p[1] for p in t["box"]),
+                min(p[0] for p in t["box"])
+            )
+        )
 
     return merged_data
 
-import statistics
 
 def detect_and_merge_header_by_row_gap(texts, tolerance_ratio=0.35):
     if len(texts) < 2:
@@ -106,4 +189,3 @@ def detect_and_merge_header_by_row_gap(texts, tolerance_ratio=0.35):
     header_prob = max(t1["prob"], t2["prob"])
 
     return texts[2:], header_text
-

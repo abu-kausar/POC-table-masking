@@ -242,6 +242,8 @@ class EasyOcrDataExtractor:
             print(f"Error: Could not load image from {img_path}")
             return processed_data
 
+        print("Performing EasyOCR on detected UI elements...\n")
+        
         for item in processed_data:
             x1, y1, x2, y2 = map(int, item["box"])
             cropped_image = original_image[y1:y2, x1:x2]
@@ -255,20 +257,44 @@ class EasyOcrDataExtractor:
 
             raw_texts = []
             for bbox, text, prob in ocr_results:
+                # print(f"easyOcr text: {text}")
                 raw_texts.append({
-                    "box": bbox,
+                    "box": [[float(x), float(y)] for [x,y] in bbox],
                     "text": text,
                     "prob": prob
                 })
 
             # 🔗 MERGE HORIZONTAL LINES HERE
-            line_texts = self.merge_horizontal_texts(raw_texts)
-            final_texts = self.merge_vertical_texts(line_texts)
-            item["texts"] = final_texts
+            # line_texts = self.merge_horizontal_texts(raw_texts)
+            # final_texts = self.merge_vertical_texts(line_texts)
+            item["texts"] = raw_texts
 
+        # Sort the each texts to find the header
+        # -------------------------------------
+
+        for item in processed_data:
+            texts = item.get("texts", [])
+            if not texts:
+                continue
+
+            if item["type"] == "text_field":
+                # Left → Right
+                item["texts"] = sorted(
+                    texts,
+                    key=lambda t: self.box_to_xyxy(t["box"])[0]  # x1
+                )
+            else:
+                # Top → Bottom
+                item["texts"] = sorted(
+                    texts,
+                    key=lambda t: self.box_to_xyxy(t["box"])[1]  # y1
+                )
+      
         # Header selection
         for item in processed_data:
             if item["texts"]:
                 item["header"] = item["texts"][0]["text"]
+                item["texts"] = item["texts"][:]
+
 
         return processed_data
