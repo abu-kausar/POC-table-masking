@@ -206,8 +206,14 @@ def searching_attemp(
         # --------------------------------------------------
         parent_x1, parent_y1, _, _ = item["box"]
 
+        # if combined match, skip first text as it is part of header
+        flag = True if is_combined else False
         for text_info in item["texts"]:
             if "text" not in text_info or "box" not in text_info:
+                continue
+
+            if flag:
+                flag = False
                 continue
 
             text_content = text_info["text"]
