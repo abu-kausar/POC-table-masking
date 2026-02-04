@@ -37,6 +37,24 @@ Download the model weights from the [drive](https://drive.google.com/file/d/1o37
   --image src/images/ss-1.jpeg \
   --headers "Order Number" "Supplier Description" "Order Date"
 ```
+### Example Input
+#### Example-1
+For the input image below, if the user wants to mask the columns `Line Number`, `Sold To Name`, `Description 1`, and `Secondary Quality`, the output will be as shown.<br>
+
+**Input Image:**
+![Input Image](src/images/ss-2.jpeg)
+
+**Output Image (masked):**
+![Output Image](src/masked_ss-2.png)
+
+---
+
+#### Example-2
+For the input image below, if the user wants to mask the fields `Order No/Type`, `Item Numer`, `Planned Effective`, and `Worker Order`, the output will be as shown.<br>
+**Input Image:**
+![Input Image](src/images/22.jpg)
+**Output Image (masked):**
+![Output Image](src/masked_22.png)
 
 ---
 
