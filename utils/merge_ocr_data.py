@@ -1,7 +1,7 @@
 import copy
 import numpy as np
 from typing import List, Dict, Tuple
-
+from common.logger import logger
 
 # -----------------------------
 # Box utilities
@@ -83,6 +83,7 @@ def merge_ocr_data(
     tesseract_ocr_data,
     iou_threshold=0.1
 ):
+    logger.info("Merging OCR data...")
     merged_data = copy.deepcopy(easy_ocr_data)
     tess_map = {item["uid"]: item for item in tesseract_ocr_data}
 
@@ -143,6 +144,8 @@ def merge_ocr_data(
 
 
 def detect_and_merge_header_by_row_gap(texts, tolerance_ratio=0.35):
+    logger.info("Detecting and merging header by row gap...")
+    
     if len(texts) < 2:
         return texts, ""
 
