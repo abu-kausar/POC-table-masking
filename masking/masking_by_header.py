@@ -118,7 +118,7 @@ def find_best_match(target_text, ocr_text_list, threshold=0.5):
 def search_text_by_header(
     processed_data,
     header_name,
-    match_threshold=0.7
+    match_threshold=0.95
 ):
     print("="*20)
     print(f"Searching texts under header: '{header_name}' with match threshold: {match_threshold}\n")
@@ -153,8 +153,8 @@ def search_text_by_header(
     else:
         print("Second attempt failed, trying with decreasing match threshold...\n")
         print("="*20)
-        # Decrease the match threshold and try again
-        for new_threshold in [0.65, 0.60, 0.55, 0.50]:
+        # Decrease the match threshold and try again (0.90 to 0.60 with step 0.05)
+        for new_threshold in [0.90, 0.85, 0.80, 0.75, 0.70, 0.65, 0.60]:
             print(f"Trying with match threshold: {new_threshold}\n")
             
             texts = searching_attemp(
@@ -163,6 +163,7 @@ def search_text_by_header(
                 match_threshold=new_threshold
             )
             if texts:
+                print(f"Found texts with decreased threshold: {new_threshold}\n")
                 return texts
     if not texts:
         print("Sorry can't find the expected header!")
@@ -173,11 +174,11 @@ def search_text_by_header(
 def searching_attemp(
     processed_data,
     header_name,
-    match_threshold=0.7,
+    match_threshold,
     is_combined=False
 ) -> list:
     texts = []
-    normalized_target = normalize_text(header_name)
+    header_name = normalize_text(header_name)
 
     for item in processed_data:
         raw_header = item.get("header", "").strip()
