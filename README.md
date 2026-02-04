@@ -52,7 +52,7 @@ For the input image below, if the user wants to mask the columns `Line Number`, 
 #### Example-2
 For the input image below, if the user wants to mask the fields `Order No/Type`, `Item Numer`, `Planned Effective`, and `Worker Order`, the output will be as shown.<br>
 **Input Image:**
-![Input Image](src/images/22.jpg)
+![Input Image](src/images/22.jpeg)
 **Output Image (masked):**
 ![Output Image](src/masked_22.png)
 
