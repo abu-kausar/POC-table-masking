@@ -36,8 +36,8 @@ def masking_by_header(header_texts: list, processed_data, img_path, output_dir="
     # save masking image
     cv2.imwrite(os.path.join(output_dir, f"masked_texts_by_headers.png"), cv2.cvtColor(annotated, cv2.COLOR_RGB2BGR))
 
-def main(headers_text: list, img_path: str):
-    model_path = "assets/best.pt"
+def main(headers_text: list, img_path: str, model_path: str):
+    # Initialize OCR Data Extractors
     easy_ocr_dex = EasyOcrDataExtractor(model_path)
     tessaract_ocr_dex = TessaractDataExtractor(model_path)
 
@@ -102,8 +102,8 @@ def parse_args():
 
     parser.add_argument(
         "--model",
-        default="assets/yolo_ui.pt",
-        help="Path to YOLO UI detection model (default: assets/yolo_ui.pt)"
+        default="assets/best.pt",
+        help="Path to YOLO UI detection model (default: assets/best.pt)"
     )
 
     return parser.parse_args()
