@@ -1,7 +1,9 @@
 import copy
 import numpy as np
 from typing import List, Dict, Tuple
-from common.logger import logger
+from common.logger import Logger
+
+logger = Logger.get_logger("merge_ocr_data")
 
 # -----------------------------
 # Box utilities
