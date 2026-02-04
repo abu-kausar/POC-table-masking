@@ -32,7 +32,7 @@ pip install -r requirements.txt
 ### Run Demo
 Download the model weights from the [drive](https://drive.google.com/file/d/1o37Dp5TIBTFebvGN-ssFlFpDNkwHouf-/view?usp=drive_link). And put it on the `assets/` folder. Then run the pipeline
 ```bash
-!python all_in_one.py \
+python all_in_one.py \
   --model assets/best.pt \
   --image src/images/ss-1.jpeg \
   --headers "Order Number" "Supplier Description" "Order Date"
