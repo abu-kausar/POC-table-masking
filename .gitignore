@@ -5,3 +5,6 @@ assets
 __pycache__
 *.ipynb
 *.pt
+experiments
+*.log
+.vscode
