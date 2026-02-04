@@ -78,9 +78,55 @@ def main(headers_text: list, img_path: str):
 
 
 
+import argparse
+import os
+import sys
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="UI Element–Aware Data Masking PoC"
+    )
+
+    parser.add_argument(
+        "--image",
+        required=True,
+        help="Path to input UI image"
+    )
+
+    parser.add_argument(
+        "--headers",
+        nargs="+",
+        required=True,
+        help="Table column headers to mask (space separated)"
+    )
+
+    parser.add_argument(
+        "--model",
+        default="assets/yolo_ui.pt",
+        help="Path to YOLO UI detection model (default: assets/yolo_ui.pt)"
+    )
+
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
+    args = parse_args()
 
-    headers_text = ["Batch Number"]
-    image_path = "/content/drive/MyDrive/POC-table-masking/images/27.jpg"
+    # Validate model path
+    if not os.path.exists(args.model):
+        print(
+            f"❌ Model not found at {args.model}\n"
+            f"Please download the YOLO model and place it inside the assets/ folder."
+        )
+        sys.exit(1)
 
-    main(headers_text, image_path)
+    # Validate image path
+    if not os.path.exists(args.image):
+        print(f"❌ Image not found: {args.image}")
+        sys.exit(1)
+
+    main(
+        headers_text=args.headers,
+        image_path=args.image,
+        model_path=args.model
+    )
