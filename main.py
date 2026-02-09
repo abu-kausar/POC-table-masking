@@ -1,7 +1,10 @@
+import sys
 import os
 import cv2
 import json
+import argparse
 from common.logger import Logger
+
 
 from data_extraction.data_extraction_tessaract import TessaractDataExtractor
 from data_extraction.data_extractor_easyocr import EasyOcrDataExtractor
@@ -78,13 +81,6 @@ def main(headers_text: list, image_path: str, model_path: str):
     # # masking by matcher
     # texts = search_by_matcher(processed_data, "Touring Bike")
     # annotate_targeted_texts(image_path, texts, True, True)
-
-
-
-
-import argparse
-import os
-import sys
 
 def parse_args():
     parser = argparse.ArgumentParser(
