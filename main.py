@@ -37,7 +37,12 @@ def masking_by_header(header_texts: list, processed_data, img_path, output_dir="
 
     if not texts_to_annotate:
         logger.warning(f"Sorry! No texts found for headers: {header_texts}")
+        # mask all texts if no header is found, this is optional, you can just skip masking if no header is found
+        # annotated = mask_all_extracted_texts(img_path, processed_data, draw_bbox=True, fill_bbox_white=True)
+        # img_name = img_path.split("/")[-1].split(".")[0]
+        # cv2.imwrite(os.path.join(output_dir, f"masked_by_headers_{img_name}.png"), cv2.cvtColor(annotated, cv2.COLOR_RGB2BGR))
         return
+    
     annotated = annotate_targeted_texts(img_path, texts_to_annotate, draw_bbox=True, fill_bbox_white=True)
     # save masking image
     img_name = img_path.split("/")[-1].split(".")[0]
