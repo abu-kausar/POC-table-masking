@@ -1,7 +1,10 @@
+import sys
 import os
 import cv2
 import json
+import argparse
 from common.logger import Logger
+
 
 from data_extraction.data_extraction_tessaract import TessaractDataExtractor
 from data_extraction.data_extractor_easyocr import EasyOcrDataExtractor
@@ -34,7 +37,12 @@ def masking_by_header(header_texts: list, processed_data, img_path, output_dir="
 
     if not texts_to_annotate:
         logger.warning(f"Sorry! No texts found for headers: {header_texts}")
+        # mask all texts if no header is found, this is optional, you can just skip masking if no header is found
+        # annotated = mask_all_extracted_texts(img_path, processed_data, draw_bbox=True, fill_bbox_white=True)
+        # img_name = img_path.split("/")[-1].split(".")[0]
+        # cv2.imwrite(os.path.join(output_dir, f"masked_by_headers_{img_name}.png"), cv2.cvtColor(annotated, cv2.COLOR_RGB2BGR))
         return
+    
     annotated = annotate_targeted_texts(img_path, texts_to_annotate, draw_bbox=True, fill_bbox_white=True)
     # save masking image
     img_name = img_path.split("/")[-1].split(".")[0]
@@ -78,13 +86,6 @@ def main(headers_text: list, image_path: str, model_path: str):
     # # masking by matcher
     # texts = search_by_matcher(processed_data, "Touring Bike")
     # annotate_targeted_texts(image_path, texts, True, True)
-
-
-
-
-import argparse
-import os
-import sys
 
 def parse_args():
     parser = argparse.ArgumentParser(

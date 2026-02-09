@@ -58,6 +58,17 @@ For the input image below, if the user wants to mask the fields `Order No/Type`,
 
 ---
 
+# Train YOLO Model From CLI
+To train the YOLO model, run the following command. Make sure to update the `--data` path to point to your dataset config file. To learn coco8 dataset format, check the [coco8 dataset format](https://docs.ultralytics.com/yolo/data/) file.
+
+```bash
+python train.py \
+  --data config/coco8.yaml \
+  --epochs 100 \
+  --imgsz 640 \
+  --batch 8
+```
+
 ## Tech Stack
 - YOLO (UI element detection)
 - EasyOCR + Tesseract (OCR)

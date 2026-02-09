@@ -14,7 +14,8 @@ class UIElementDetector:
     CLASS_NAMES = {
         0: "table_column",
         1: "text_field",
-        2: "text_info"
+        2: "text_info",
+        3: "top_down_text_field"
     }
 
     if result[0].boxes is not None:
