@@ -2,7 +2,6 @@ data
 assets
 *.ipynb_checkpoints
 __pycache__
-*.ipynb
 *.pt
 experiments
 *.log
