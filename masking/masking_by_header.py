@@ -177,7 +177,7 @@ def searching_attemp(
 ) -> list:
     
     texts = []
-    target_header_name = normalize_text(target_header_name)
+    # target_header_name = normalize_text(target_header_name)
 
     for item in processed_data:
         raw_header = item.get("header", "").strip()

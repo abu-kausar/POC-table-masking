@@ -97,7 +97,6 @@ def main(headers_text: list, image_path: str, model_path: str):
     intermediate_drawing(image_path, processed_data)
 
     # Step-4: Targeted masking
-    # masking by single header
     masking_by_header(headers_text, processed_data, image_path, output_dir)
 
     # # masking by matcher

@@ -90,7 +90,7 @@ class TessaractDataExtractor:
             for indices in lines.values():
                 texts = [data["text"][i] for i in indices]
                 text = " ".join(texts)
-                print(text)
+                # print(text)
                 x_min = min(data["left"][i] for i in indices)
                 y_min = min(data["top"][i] for i in indices)
                 x_max = max(data["left"][i] + data["width"][i] for i in indices)
