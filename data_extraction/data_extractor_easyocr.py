@@ -38,6 +38,22 @@ class EasyOcrDataExtractor:
         union = max(x2, x2b) - min(x1, x1b)
 
         return inter / union if union > 0 else 0
+    
+    @staticmethod
+    def remove_unnecessary_characters(text):
+        remove_chars = [
+            '(', ')', '[', ']', '{', '}', '<', '>', 
+            '"', "'", '`', '~', '@', '#', '$', '%', 
+            '^', '&', '*', '-', '_', '=', '+', 
+            '\\', '|', ';', ':', ',', '.', '?'
+        ]
+        # now remove from first and last
+        for char in remove_chars:
+            if text.startswith(char):
+                text = text[1:]
+            if text.endswith(char):
+                text = text[:-1]
+        return text.strip()
 
     # -----------------------------
     # Merge vertical aligned texts
@@ -290,11 +306,11 @@ class EasyOcrDataExtractor:
                     key=lambda t: self.box_to_xyxy(t["box"])[1]  # y1
                 )
       
-        # Header selection
-        for item in processed_data:
-            if item["texts"]:
-                item["header"] = item["texts"][0]["text"]
-                item["texts"] = item["texts"][:]
+        # # Header selection
+        # for item in processed_data:
+        #     if item["texts"]:
+        #         item["header"] = item["texts"][0]["text"]
+        #         item["texts"] = item["texts"][1:]
 
 
         return processed_data

@@ -8,12 +8,31 @@ from common.logger import Logger
 
 from data_extraction.data_extraction_tessaract import TessaractDataExtractor
 from data_extraction.data_extractor_easyocr import EasyOcrDataExtractor
-from utils.merge_ocr_data import detect_and_merge_header_by_row_gap, merge_ocr_data
+from utils.helper import remove_unnecessary_characters
+from utils.merge_texts import box_stats, merge_texts
+from utils.merge_ocr_data import merge_ocr_data
 from utils.drawing import annotate_targeted_texts, draw_box_on_all_texts, mask_all_extracted_texts
 from masking.masking_by_header import search_text_by_header
-from masking.mask_all_match_text import search_by_matcher
 
 logger = Logger.get_logger("main")
+
+
+def header_selection(processed_data):
+    """Select header from extracted texts and assign to 'header' key."""
+    for item in processed_data:
+        if item["texts"]:
+            # sort based on logic
+            if item["type"] == "text_field":
+                # left to right sort
+                item["texts"].sort(key=lambda x: box_stats(x["box"])["x_min"])
+            elif item["type"] == "top_down_text_field":
+                # top to bottom sort
+                item["texts"].sort(key=lambda x: box_stats(x["box"])["y_min"])
+                
+            item["header"] = remove_unnecessary_characters(item["texts"][0]["text"])
+            item["texts"] = item["texts"][1:]
+            
+    return processed_data
 
 def intermediate_drawing(img_path, processed_data, output_dir = "outputs"):
     os.makedirs(output_dir, exist_ok=True)
@@ -58,19 +77,17 @@ def main(headers_text: list, image_path: str, model_path: str):
     os.makedirs(output_dir, exist_ok=True)
 
     # Step-1: Extract data from both OCRs
-    easy_ocr_data = easy_ocr_dex.data_extraction_from_image(image_path)
+    # easy_ocr_data = easy_ocr_dex.data_extraction_from_image(image_path)
     tessaract_ocr_data = tessaract_ocr_dex.data_extraction_from_image(image_path)
 
     # Step-2: Merge Two OCR data
-    processed_data = merge_ocr_data(easy_ocr_data, tessaract_ocr_data, iou_threshold=0.3)
-
-    # processed_data = tessaract_ocr_data
-
-    # Not mask header
-    # Header selection
-    for item in processed_data:
-        if item["texts"]:
-            item["texts"] = item["texts"][1:]
+    # processed_data = merge_ocr_data(easy_ocr_data, tessaract_ocr_data, iou_threshold=0.3)
+    
+    # merge horizontal texts and vertical texts with small gap
+    processed_data = merge_texts(tessaract_ocr_data)
+    
+    # Now select header
+    processed_data = header_selection(processed_data)
 
     # save processed data for further testing
     with open("outputs/processed_data.json", "w") as f:
