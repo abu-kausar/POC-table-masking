@@ -203,7 +203,7 @@ def remove_unnecessary_characters(text):
         text = text[1:]
     while text and not text[-1].isalnum():
         text = text[:-1]
-    return text
+    return text.strip()
 
 def save_ocr_data(img_path, processed_data, output_dir="outputs"):
     # save processed data for further testing
