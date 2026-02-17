@@ -1,3 +1,5 @@
+import os
+import json
 from typing import List, Tuple, Literal
 import cv2
 import matplotlib.pyplot as plt
@@ -202,3 +204,24 @@ def remove_unnecessary_characters(text):
     while text and not text[-1].isalnum():
         text = text[:-1]
     return text
+
+def save_ocr_data(img_path, processed_data, output_dir="outputs"):
+    # save processed data for further testing
+    os.makedirs(output_dir, exist_ok=True)
+    with open(f"{output_dir}/processed_data.json", "w") as f:
+        json.dump(processed_data, f, indent=4)
+        
+    """Save extracted text with header in a text file."""
+    image_name = img_path.split("/")[-1].split(".")[0]
+    output_file = os.path.join(output_dir, f"{image_name}_extracted_text.txt")
+
+    full_text = []
+    for i, item in enumerate(processed_data):
+        if item["texts"]:
+            text_with_header = f"{i+1}. {item['header']}\n"
+            for text_item in item["texts"]:
+                text_with_header += f"   - {text_item['text']}\n"
+            full_text.append(text_with_header)
+
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.writelines(full_text)

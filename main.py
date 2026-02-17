@@ -8,14 +8,13 @@ from common.logger import Logger
 
 from data_extraction.data_extraction_tessaract import TessaractDataExtractor
 from data_extraction.data_extractor_easyocr import EasyOcrDataExtractor
-from utils.helper import remove_unnecessary_characters
+from utils.helper import remove_unnecessary_characters, save_ocr_data
 from utils.merge_texts import box_stats, merge_texts
 from utils.merge_ocr_data import merge_ocr_data
 from utils.drawing import annotate_targeted_texts, draw_box_on_all_texts, mask_all_extracted_texts
 from masking.masking_by_header import search_text_by_header
 
 logger = Logger.get_logger("main")
-
 
 def header_selection(processed_data):
     """Select header from extracted texts and assign to 'header' key."""
@@ -78,7 +77,8 @@ def main(headers_text: list, image_path: str, model_path: str):
     tessaract_ocr_dex = TessaractDataExtractor(model_path)
 
     # make outputs directory
-    output_dir = "outputs"
+    image_name = image_path.split("/")[-1].split(".")[0]
+    output_dir = f"outputs/{image_name}"
     os.makedirs(output_dir, exist_ok=True)
 
     # Step-1: Extract data from both OCRs
@@ -90,17 +90,14 @@ def main(headers_text: list, image_path: str, model_path: str):
     
     # merge horizontal texts and vertical texts with small gap
     processed_data = merge_texts(tessaract_ocr_data)
-    
     # Now select header
     processed_data = header_selection(processed_data)
 
-    # save processed data for further testing
-    with open("outputs/processed_data.json", "w") as f:
-        json.dump(processed_data, f, indent=4)
-
+    # Save extracted text with headers
+    save_ocr_data(image_path, processed_data, output_dir)
     # This drawing is optional, just for visualization
-    intermediate_drawing(image_path, processed_data)
-
+    intermediate_drawing(image_path, processed_data, output_dir)
+    
     # Step-4: Targeted masking
     masking_by_header(headers_text, processed_data, image_path, output_dir)
 
