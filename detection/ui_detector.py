@@ -8,13 +8,14 @@ class UIElementDetector:
   def predict(self, image_path: str):
     if self.model is None:
       raise RuntimeError("Model not loaded. Call load() first.")
-    result = self.model.predict(image_path)
+    result = self.model.predict(image_path, verbose=False)
 
     extracted_data = []
     CLASS_NAMES = {
         0: "table_column",
         1: "text_field",
-        2: "text_info"
+        2: "text_info",
+        3: "top_down_text_field"
     }
 
     if result[0].boxes is not None:

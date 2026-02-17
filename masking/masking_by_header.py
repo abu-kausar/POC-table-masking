@@ -1,15 +1,9 @@
-# extract all boxes related to user target text
-
-# text to be masked
-# targeted_text = "Touring Bike"
-# extract all boxes related to user target text
-
-# text to be masked
-# targeted_text = "Touring Bike"
-
 import re
 from rapidfuzz import fuzz
 from collections import Counter
+from common.logger import Logger
+
+logger = Logger.get_logger("masking_by_header")
 
 # ------------------------------------------------
 # 1. Normalize OCR text
@@ -117,15 +111,79 @@ def find_best_match(target_text, ocr_text_list, threshold=0.5):
 
 def search_text_by_header(
     processed_data,
-    header_name,
-    match_threshold=0.6
+    target_header_name,
+    match_threshold=0.95
 ):
-    texts = []
+    logger.info("="*20)
+    logger.info(f"Searching texts under header: '{target_header_name}' with match threshold: {match_threshold}\n")
+    if processed_data is None or not processed_data:
+        logger.warning("No processed data available.\n")
+        return []
+    
+    # first attempt
+    texts = searching_attemp(
+        processed_data,
+        target_header_name,
+        match_threshold
+    )
+    # second attemp if not found
+    if texts:
+        logger.info("Found header in first attempt.\n")
+        return texts
+    else:
+        # take first item from processed_data and concanate it search term
+        if processed_data[0]["texts"]:
+            logger.info(f"Trying with combined header: {processed_data[0]['header']} {processed_data[0]['texts'][0]['text']}..........\n")
+            texts = searching_attemp(
+                processed_data,
+                target_header_name,
+                match_threshold,
+                is_combined=True
+            )
+    # make third attempt if still not found
+    if texts:
+        # since found in second attempt
+        # delete first element texts to avoid duplicate masking
+        logger.info("Found header in second attempt with combined header\n")
+        logger.info(f"last part of the header: {texts[0][0]}\n")
+        texts = texts[1:]
+        return texts
+    else:
+        logger.info("Second attempt failed, trying with decreasing match threshold...\n")
+        logger.info("="*20)
+        # Decrease the match threshold and try again (0.90 to 0.60 with step 0.05)
+        for new_threshold in [0.90, 0.85, 0.80, 0.75, 0.70, 0.65, 0.60]:
+            logger.info(f"Trying with match threshold: {new_threshold}\n")
+            
+            texts = searching_attemp(
+                processed_data,
+                target_header_name,
+                match_threshold=new_threshold
+            )
+            if texts:
+                logger.info(f"Found texts with decreased threshold: {new_threshold}\n")
+                return texts
+    if not texts:
+        logger.warning("Sorry can't find the expected header!")
+        return []
+    
+    return texts
 
-    normalized_target = normalize_text(header_name)
+def searching_attemp(
+    processed_data,
+    target_header_name,
+    match_threshold,
+    is_combined=False
+) -> list:
+    
+    texts = []
+    # target_header_name = normalize_text(target_header_name)
 
     for item in processed_data:
         raw_header = item.get("header", "").strip()
+        first_text = item['texts'][0]['text'] if item['texts'] else ""
+        if is_combined:
+            raw_header = f"{raw_header} {first_text}" if item["texts"] else raw_header
 
         if not raw_header:
             continue
@@ -134,7 +192,7 @@ def search_text_by_header(
         # 🔍 OCR-AWARE HEADER MATCHING
         # --------------------------------------------------
         match_result = ocr_text_match(
-            expected_text=header_name,
+            expected_text=target_header_name,
             ocr_text=raw_header,
             threshold=match_threshold
         )
@@ -146,13 +204,13 @@ def search_text_by_header(
         # ✅ HEADER MATCHED — extract child texts
         # --------------------------------------------------
         parent_x1, parent_y1, _, _ = item["box"]
-
+        
         for text_info in item["texts"]:
             if "text" not in text_info or "box" not in text_info:
                 continue
 
             text_content = text_info["text"]
-
+    
             # Skip if this text is basically the header itself
             header_match = ocr_text_match(
                 expected_text=raw_header,
