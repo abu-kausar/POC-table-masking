@@ -2,7 +2,7 @@ import re
 from rapidfuzz import fuzz
 from collections import Counter
 from common.logger import Logger
-
+from typing import Tuple
 logger = Logger.get_logger("masking_by_header")
 
 # ------------------------------------------------
@@ -118,67 +118,71 @@ def search_text_by_header(
     logger.info(f"Searching texts under header: '{target_header_name}' with match threshold: {match_threshold}\n")
     if processed_data is None or not processed_data:
         logger.warning("No processed data available.\n")
-        return []
+        return [], None
     
     # first attempt
-    texts = searching_attemp(
+    texts, match_result = searching_attemp(
         processed_data,
         target_header_name,
         match_threshold
     )
     # second attemp if not found
-    if texts:
+    if match_result:
         logger.info("Found header in first attempt.\n")
-        return texts
+        logger.info(f"Number of Texts found: {len(texts)}\n")
+        return texts, match_result
     else:
         # take first item from processed_data and concanate it search term
         if processed_data[0]["texts"]:
             logger.info(f"Trying with combined header: {processed_data[0]['header']} {processed_data[0]['texts'][0]['text']}..........\n")
-            texts = searching_attemp(
+            texts, match_result = searching_attemp(
                 processed_data,
                 target_header_name,
                 match_threshold,
                 is_combined=True
             )
     # make third attempt if still not found
-    if texts:
+    if match_result:
         # since found in second attempt
         # delete first element texts to avoid duplicate masking
         logger.info("Found header in second attempt with combined header\n")
         logger.info(f"last part of the header: {texts[0][0]}\n")
         texts = texts[1:]
-        return texts
+        return texts, match_result
     else:
-        logger.info("Second attempt failed, trying with decreasing match threshold...\n")
+        logger.info("Try 3rd attempt with decreasing match threshold...\n")
         logger.info("="*20)
         # Decrease the match threshold and try again (0.90 to 0.60 with step 0.05)
         for new_threshold in [0.90, 0.85, 0.80, 0.75, 0.70, 0.65, 0.60]:
             logger.info(f"Trying with match threshold: {new_threshold}\n")
             
-            texts = searching_attemp(
+            texts, match_result = searching_attemp(
                 processed_data,
                 target_header_name,
                 match_threshold=new_threshold
             )
-            if texts:
+            if match_result:
                 logger.info(f"Found texts with decreased threshold: {new_threshold}\n")
-                return texts
+                logger.info(f"Number of Texts found: {len(texts)}\n")
+
+                return texts, match_result
     if not texts:
         logger.warning("Sorry can't find the expected header!")
-        return []
-    
-    return texts
+        return [], None
+
+    return texts, None
 
 def searching_attemp(
     processed_data,
     target_header_name,
     match_threshold,
     is_combined=False
-) -> list:
+) -> Tuple[list, dict]:
     
     texts = []
     # target_header_name = normalize_text(target_header_name)
-
+    matching_found = None
+    
     for item in processed_data:
         raw_header = item.get("header", "").strip()
         first_text = item['texts'][0]['text'] if item['texts'] else ""
@@ -196,6 +200,7 @@ def searching_attemp(
             ocr_text=raw_header,
             threshold=match_threshold
         )
+        # print(f"Matching '{target_header_name}' with OCR header '{raw_header}' => Final Score: {match_result['final_score']}, Match: {match_result['match']}")
 
         if not match_result["match"]:
             continue  # ❌ Not the target header
@@ -203,6 +208,7 @@ def searching_attemp(
         # --------------------------------------------------
         # ✅ HEADER MATCHED — extract child texts
         # --------------------------------------------------
+        matching_found = True
         parent_x1, parent_y1, _, _ = item["box"]
         
         for text_info in item["texts"]:
@@ -239,5 +245,5 @@ def searching_attemp(
                 )
             )
 
-    return texts
+    return texts, match_result
 

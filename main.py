@@ -34,6 +34,7 @@ def header_selection(processed_data, image_path):
                 item["texts"] = text_boxes
                     
             item["header"] = remove_unnecessary_characters(item["texts"][0]["text"])
+            # print(f" Header: {item['header']} for type: {item['type']}")
             item["texts"] = item["texts"][1:]
             
     return processed_data
@@ -54,9 +55,12 @@ def masking_by_header(header_texts: list, processed_data, img_path, output_dir="
     """Mask texts based on multiple headers."""
     # multiple headers may be provided, mask each one by one and show in single image
     texts_to_annotate = []
+    is_found_any_header = False
     for header_text in header_texts:
-        texts = search_text_by_header(processed_data, header_text, match_threshold=0.95)
+        texts, match_result = search_text_by_header(processed_data, header_text, match_threshold=0.95)
         texts_to_annotate.extend(texts)
+        if match_result:
+            is_found_any_header = True
 
     if not texts_to_annotate:
         logger.warning(f"Sorry! No texts found for headers: {header_texts}")
@@ -64,11 +68,12 @@ def masking_by_header(header_texts: list, processed_data, img_path, output_dir="
         # annotated = mask_all_extracted_texts(img_path, processed_data, draw_bbox=False, fill_bbox_white=True)
         # img_name = img_path.split("/")[-1].split(".")[0]
         # cv2.imwrite(os.path.join(output_dir, f"masked_by_headers_{img_name}.png"), cv2.cvtColor(annotated, cv2.COLOR_RGB2BGR))
-        all_texts = TessaractDataExtractor.texts_extraction_from_image(img_path)
-        annotated = annotate_targeted_texts(img_path, all_texts, draw_bbox=False, fill_bbox_white=True)
-        img_name = img_path.split("/")[-1].split(".")[0]
-        cv2.imwrite(os.path.join(output_dir, f"masked_by_headers_{img_name}.png"), cv2.cvtColor(annotated, cv2.COLOR_RGB2BGR))
-        
+        if not is_found_any_header:
+            all_texts = TessaractDataExtractor.texts_extraction_from_image(img_path)
+            annotated = annotate_targeted_texts(img_path, all_texts, draw_bbox=False, fill_bbox_white=True)
+            img_name = img_path.split("/")[-1].split(".")[0]
+            cv2.imwrite(os.path.join(output_dir, f"masked_by_headers_{img_name}.png"), cv2.cvtColor(annotated, cv2.COLOR_RGB2BGR))
+            
         return
     
     annotated = annotate_targeted_texts(img_path, texts_to_annotate, draw_bbox=True, fill_bbox_white=True)
