@@ -3,6 +3,8 @@ import json
 import cv2
 import numpy as np
 
+from experiments.morphological_operation import get_word_bounding_boxes_from_mask
+
 def visualize_connected_components(mask_path, output_path=None):
     """
     Visualize connected components in the mask for debugging.
@@ -61,7 +63,7 @@ def refine_mask_with_morphology(mask, output_path=None):
 
     return mask_opened
 
-def get_word_bounding_boxes_from_mask(image_path, min_area=20, max_area=50000):
+def get_word_bounding_boxes_from_image(image_path, min_area=20, max_area=50000):
     """
     Get bounding boxes of words from the binary mask.
     

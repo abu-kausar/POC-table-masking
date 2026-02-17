@@ -8,6 +8,7 @@ from common.logger import Logger
 
 from data_extraction.data_extraction_tessaract import TessaractDataExtractor
 from data_extraction.data_extractor_easyocr import EasyOcrDataExtractor
+from utils.table_data_handling import process_table_data
 from utils.helper import remove_unnecessary_characters, save_ocr_data
 from utils.merge_texts import box_stats, merge_texts
 from utils.merge_ocr_data import merge_ocr_data
@@ -16,7 +17,7 @@ from masking.masking_by_header import search_text_by_header
 
 logger = Logger.get_logger("main")
 
-def header_selection(processed_data):
+def header_selection(processed_data, image_path):
     """Select header from extracted texts and assign to 'header' key."""
     for item in processed_data:
         if item["texts"]:
@@ -27,7 +28,11 @@ def header_selection(processed_data):
             elif item["type"] == "top_down_text_field":
                 # top to bottom sort
                 item["texts"].sort(key=lambda x: box_stats(x["box"])["y_min"])
-                
+            elif item["type"] == "table_column":
+                # we will take help in morphological operation in that case
+                header, text_boxes = process_table_data(item["texts"], item["box"], image_path)
+                item["texts"] = text_boxes
+                    
             item["header"] = remove_unnecessary_characters(item["texts"][0]["text"])
             item["texts"] = item["texts"][1:]
             
@@ -91,7 +96,7 @@ def main(headers_text: list, image_path: str, model_path: str):
     # merge horizontal texts and vertical texts with small gap
     processed_data = merge_texts(tessaract_ocr_data)
     # Now select header
-    processed_data = header_selection(processed_data)
+    processed_data = header_selection(processed_data, image_path)
 
     # Save extracted text with headers
     save_ocr_data(image_path, processed_data, output_dir)
