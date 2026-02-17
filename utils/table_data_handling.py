@@ -89,7 +89,7 @@ def process_table_data(texts: list, det_box, image_path: str):
         
     # now take the first box from new_word_boxes and find how much texts are intersecting with that box, those will be the headers
     # sort texts top to bottom
-    texts.sort(key=lambda t: t["box"][0])  # Sort by y_min
+    texts.sort(key=lambda t: t["box"][0][1])  # Sort by y_min
     headers = []
     if new_word_boxes:
         first_box = new_word_boxes[0]
