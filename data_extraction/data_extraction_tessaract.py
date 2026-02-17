@@ -44,10 +44,10 @@ class TessaractDataExtractor:
         for item in processed_data:
             # adding padding 5 and also ensure the padding value does not go beyond image boundaries
             x1, y1, x2, y2 = map(int, item["box"])
-            cropped_x1 = max(0, x1 - 5)
-            cropped_y1 = max(0, y1 - 5)
-            cropped_x2 = min(original_image.shape[1], x2 + 5)
-            cropped_y2 = min(original_image.shape[0], y2 + 5)
+            cropped_x1 = max(0, x1)
+            cropped_y1 = max(0, y1)
+            cropped_x2 = min(original_image.shape[1], x2)
+            cropped_y2 = min(original_image.shape[0], y2)
             cropped_image = original_image[cropped_y1:cropped_y2, cropped_x1:cropped_x2]
 
             if cropped_image.size == 0:
