@@ -115,4 +115,45 @@ class TessaractDataExtractor:
             item["texts"] = line_texts
 
         return processed_data
+    
+    @staticmethod
+    def texts_extraction_from_image(img_path: str):
+        original_image = cv2.imread(img_path)
+
+        if original_image is None:
+            print(f"Error: Could not load image from {img_path}")
+            return []
+
+        data = pytesseract.image_to_data(
+            original_image,
+            lang="eng",
+            config="--oem 3 --psm 12",  # e.g. "--oem 3 --psm 12"
+            output_type=pytesseract.Output.DICT
+        )
+
+        processed_data = []
+
+        for i in range(len(data["text"])):
+            text = data["text"][i].strip()
+            conf = float(data["conf"][i])
+
+            # level 5 = word
+            if not text or conf <= 0 or data["level"][i] != 5:
+                continue
+
+            x_min = data["left"][i]
+            y_min = data["top"][i]
+            x_max = x_min + data["width"][i]
+            y_max = y_min + data["height"][i]
+
+            box = [
+                [x_min, y_min],  # top-left
+                [x_max, y_min],  # top-right
+                [x_max, y_max],  # bottom-right
+                [x_min, y_max]   # bottom-left
+            ]
+
+            processed_data.append([text, box])
+
+        return processed_data
 
