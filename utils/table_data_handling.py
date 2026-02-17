@@ -114,7 +114,7 @@ def process_table_data(texts: list, det_box, image_path: str):
             # print("Text box in xyxy format:", text_box_xyxy, "first box:", first_box)
             inter = intersection_xyxy(text_box_xyxy, first_box)
             if inter:
-                print("Found header:", text["text"])
+                # print("Found header:", text["text"])
                 headers.append(text["text"])
                 # remove the header text from texts list, so that it won't be considered in word boxes merging
                 removed_indices.append(i)
