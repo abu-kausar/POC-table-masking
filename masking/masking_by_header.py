@@ -133,7 +133,7 @@ def search_text_by_header(
     else:
         # take first item from processed_data and concanate it search term
         if processed_data[0]["texts"]:
-            logger.info(f"Trying with combined header..........\n")
+            logger.info(f"Trying with combined header: {processed_data[0]['header']} {processed_data[0]['texts'][0]['text']}..........\n")
             texts = searching_attemp(
                 processed_data,
                 target_header_name,
@@ -177,7 +177,7 @@ def searching_attemp(
 ) -> list:
     
     texts = []
-    target_header_name = normalize_text(target_header_name)
+    # target_header_name = normalize_text(target_header_name)
 
     for item in processed_data:
         raw_header = item.get("header", "").strip()

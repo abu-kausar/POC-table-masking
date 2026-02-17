@@ -83,7 +83,7 @@ def to_python_number(x):
 def merge_ocr_data(
     easy_ocr_data,
     tesseract_ocr_data,
-    iou_threshold=0.1
+    iou_threshold=0.2
 ):
     logger.info("Merging OCR data...")
     merged_data = copy.deepcopy(easy_ocr_data)
@@ -114,10 +114,10 @@ def merge_ocr_data(
                     #     f"==== easy_text: {easy_item['texts'][idx]['text']}"
                     # )
 
-                    # # Optional: replace EasyOCR if Tesseract is more confident
-                    # if tess_text.get("prob", 0) > easy_item["texts"][idx].get("prob", 0):
-                    #     easy_item["texts"][idx]["text"] = tess_text["text"]
-                    #     easy_item["texts"][idx]["prob"] = float(tess_text.get("prob", 0))
+                    # Optional: replace EasyOCR if Tesseract is more confident
+                    if tess_text.get("prob", 0) > easy_item["texts"][idx].get("prob", 0):
+                        easy_item["texts"][idx]["text"] = tess_text["text"]
+                        easy_item["texts"][idx]["prob"] = float(tess_text.get("prob", 0))
 
                     # ✅ REMOVE from Tesseract once matched
                     tess_item["texts"].remove(tess_text)

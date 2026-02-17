@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from typing import List, Tuple
 
+from utils.helper import _display_image, _draw_centered_text, _generate_masked_text, _is_valid_bbox, _normalize_bbox
+
 
 
 BoundingBox = List[List[int]]  # [[x1, y1], [x2, y2]]
@@ -25,7 +27,12 @@ def draw_box_on_all_texts(image_path: str, all_processed_data: list, draw_bbox: 
     thickness = 1
 
     for processed_data_item in all_processed_data:
-        parent_x1, parent_y1, _, _ = processed_data_item["box"]
+        parent_x1, parent_y1, parent_x2, parent_y2 = processed_data_item["box"]
+        x1, x2 = min(parent_x1, parent_x2), max(parent_x1, parent_x2)
+        y1, y2 = min(parent_y1, parent_y2), max(parent_y1, parent_y2)
+        # print(f"Drawing parent box: ({x1}, {y1}), ({x2}, {y2})")
+        # Now draw parent box
+        cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), box_color, thickness)
         texts_to_annotate = processed_data_item["texts"]
 
         for text_info in texts_to_annotate:

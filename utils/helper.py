@@ -195,3 +195,10 @@ def compute_iou(boxA, boxB):
     # Return the IOU value
     return iou
 
+def remove_unnecessary_characters(text):
+    # first and last character should be alphanumeric, if not remove them
+    while text and not text[0].isalnum():
+        text = text[1:]
+    while text and not text[-1].isalnum():
+        text = text[:-1]
+    return text

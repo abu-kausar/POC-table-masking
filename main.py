@@ -8,12 +8,31 @@ from common.logger import Logger
 
 from data_extraction.data_extraction_tessaract import TessaractDataExtractor
 from data_extraction.data_extractor_easyocr import EasyOcrDataExtractor
-from utils.merge_ocr_data import detect_and_merge_header_by_row_gap, merge_ocr_data
+from utils.helper import remove_unnecessary_characters
+from utils.merge_texts import box_stats, merge_texts
+from utils.merge_ocr_data import merge_ocr_data
 from utils.drawing import annotate_targeted_texts, draw_box_on_all_texts, mask_all_extracted_texts
 from masking.masking_by_header import search_text_by_header
-from masking.mask_all_match_text import search_by_matcher
 
 logger = Logger.get_logger("main")
+
+
+def header_selection(processed_data):
+    """Select header from extracted texts and assign to 'header' key."""
+    for item in processed_data:
+        if item["texts"]:
+            # sort based on logic
+            if item["type"] == "text_field":
+                # left to right sort
+                item["texts"].sort(key=lambda x: box_stats(x["box"])["x_min"])
+            elif item["type"] == "top_down_text_field":
+                # top to bottom sort
+                item["texts"].sort(key=lambda x: box_stats(x["box"])["y_min"])
+                
+            item["header"] = remove_unnecessary_characters(item["texts"][0]["text"])
+            item["texts"] = item["texts"][1:]
+            
+    return processed_data
 
 def intermediate_drawing(img_path, processed_data, output_dir = "outputs"):
     os.makedirs(output_dir, exist_ok=True)
@@ -37,10 +56,15 @@ def masking_by_header(header_texts: list, processed_data, img_path, output_dir="
 
     if not texts_to_annotate:
         logger.warning(f"Sorry! No texts found for headers: {header_texts}")
-        # mask all texts if no header is found, this is optional, you can just skip masking if no header is found
-        # annotated = mask_all_extracted_texts(img_path, processed_data, draw_bbox=True, fill_bbox_white=True)
+        # # mask all texts if no header is found, this is optional, you can just skip masking if no header is found
+        # annotated = mask_all_extracted_texts(img_path, processed_data, draw_bbox=False, fill_bbox_white=True)
         # img_name = img_path.split("/")[-1].split(".")[0]
         # cv2.imwrite(os.path.join(output_dir, f"masked_by_headers_{img_name}.png"), cv2.cvtColor(annotated, cv2.COLOR_RGB2BGR))
+        all_texts = TessaractDataExtractor.texts_extraction_from_image(img_path)
+        annotated = annotate_targeted_texts(img_path, all_texts, draw_bbox=False, fill_bbox_white=True)
+        img_name = img_path.split("/")[-1].split(".")[0]
+        cv2.imwrite(os.path.join(output_dir, f"masked_by_headers_{img_name}.png"), cv2.cvtColor(annotated, cv2.COLOR_RGB2BGR))
+        
         return
     
     annotated = annotate_targeted_texts(img_path, texts_to_annotate, draw_bbox=True, fill_bbox_white=True)
@@ -58,19 +82,17 @@ def main(headers_text: list, image_path: str, model_path: str):
     os.makedirs(output_dir, exist_ok=True)
 
     # Step-1: Extract data from both OCRs
-    easy_ocr_data = easy_ocr_dex.data_extraction_from_image(image_path)
+    # easy_ocr_data = easy_ocr_dex.data_extraction_from_image(image_path)
     tessaract_ocr_data = tessaract_ocr_dex.data_extraction_from_image(image_path)
 
     # Step-2: Merge Two OCR data
-    processed_data = merge_ocr_data(easy_ocr_data, tessaract_ocr_data, iou_threshold=0.3)
-
-    # processed_data = tessaract_ocr_data
-
-    # Not mask header
-    # Header selection
-    for item in processed_data:
-        if item["texts"]:
-            item["texts"] = item["texts"][1:]
+    # processed_data = merge_ocr_data(easy_ocr_data, tessaract_ocr_data, iou_threshold=0.3)
+    
+    # merge horizontal texts and vertical texts with small gap
+    processed_data = merge_texts(tessaract_ocr_data)
+    
+    # Now select header
+    processed_data = header_selection(processed_data)
 
     # save processed data for further testing
     with open("outputs/processed_data.json", "w") as f:
@@ -80,7 +102,6 @@ def main(headers_text: list, image_path: str, model_path: str):
     intermediate_drawing(image_path, processed_data)
 
     # Step-4: Targeted masking
-    # masking by single header
     masking_by_header(headers_text, processed_data, image_path, output_dir)
 
     # # masking by matcher

@@ -7,212 +7,8 @@ import pytesseract
 
 class TessaractDataExtractor:
     def __init__(self, model_path: str):
-        self.tesseract_config = "--oem 3 --psm 6"
+        self.tesseract_config = "--oem 3 --psm 12"
         self.ui_element_extractor = UIElementDetector(model_path)
-
-    # -----------------------------
-    # Helper: box utils
-    # -----------------------------
-    @staticmethod
-    def box_to_xyxy(box):
-        xs = [int(p[0]) for p in box]
-        ys = [int(p[1]) for p in box]
-        return min(xs), min(ys), max(xs), max(ys)
-
-    @staticmethod
-    def xyxy_to_box(x1, y1, x2, y2):
-        return [
-            [x1, y1],
-            [x2, y1],
-            [x2, y2],
-            [x1, y2]
-        ]
-
-    @staticmethod
-    def horizontal_iou(box1, box2):
-        # box = (x1, y1, x2, y2)
-        x1, _, x2, _ = box1
-        x1b, _, x2b, _ = box2
-
-        inter = max(0, min(x2, x2b) - max(x1, x1b))
-        union = max(x2, x2b) - min(x1, x1b)
-
-        return inter / union if union > 0 else 0
-
-
-    # -----------------------------
-    # Merge vertical aligned texts
-    # -----------------------------
-
-    def merge_vertical_texts(
-        self,
-        texts,
-        vertical_gap_threshold=12,
-        horizontal_overlap_threshold=0.6
-    ):
-        if not texts:
-            return []
-
-        items = []
-        for t in texts:
-            x1, y1, x2, y2 = self.box_to_xyxy(t["box"])
-            items.append({
-                "orig": t,
-                "x1": x1, "y1": y1, "x2": x2, "y2": y2
-            })
-
-        # Sort top → bottom
-        items.sort(key=lambda i: i["y1"])
-
-        merged_blocks = []
-
-        for item in items:
-            if not merged_blocks:
-                merged_blocks.append([item])
-                continue
-
-            last_block = merged_blocks[-1][-1]
-
-            vertical_gap = item["y1"] - last_block["y2"]
-            h_iou = self.horizontal_iou(
-                (item["x1"], item["y1"], item["x2"], item["y2"]),
-                (last_block["x1"], last_block["y1"], last_block["x2"], last_block["y2"])
-            )
-
-            if vertical_gap <= vertical_gap_threshold and h_iou >= horizontal_overlap_threshold:
-                merged_blocks[-1].append(item)
-            else:
-                merged_blocks.append([item])
-
-        merged_texts = []
-
-        for block in merged_blocks:
-            x1 = min(i["x1"] for i in block)
-            y1 = min(i["y1"] for i in block)
-            x2 = max(i["x2"] for i in block)
-            y2 = max(i["y2"] for i in block)
-
-            text = " ".join(i["orig"]["text"] for i in block)
-            prob = max(i["orig"]["prob"] for i in block)
-
-            merged_texts.append({
-                "box": self.xyxy_to_box(x1, y1, x2, y2),
-                "text": text,
-                "prob": float(prob)
-            })
-
-        return merged_texts
-
-
-    # -----------------------------
-    # Merge horizontally aligned texts
-    # -----------------------------
-    def merge_horizontal_texts(
-      self,
-      texts,
-      line_threshold=8,
-      max_gap_ratio=1.5
-    ):
-      """
-      Merge horizontally aligned OCR texts into line-level boxes.
-
-      Rules:
-      - Texts must be vertically aligned (same line)
-      - Horizontal gap must be small relative to character width
-      """
-
-      if not texts:
-          return []
-
-      # -------- Step 1: Normalize boxes --------
-      items = []
-      for t in texts:
-          x1, y1, x2, y2 = self.box_to_xyxy(t["box"])
-          y_center = (y1 + y2) / 2
-
-          items.append({
-              "orig": t,
-              "x1": x1,
-              "y1": y1,
-              "x2": x2,
-              "y2": y2,
-              "y_center": y_center
-          })
-
-      # -------- Step 2: Sort (top → bottom, left → right) --------
-      items.sort(key=lambda i: (i["y_center"], i["x1"]))
-
-      lines = []
-
-      # -------- Step 3: Line grouping with gap check --------
-      for item in items:
-          if not lines:
-              lines.append([item])
-              continue
-
-          last_line = lines[-1]
-          last_item = last_line[-1]
-
-          # Vertical alignment check
-          same_line = abs(item["y_center"] - last_item["y_center"]) <= line_threshold
-
-          if same_line:
-              # Horizontal gap check
-              horizontal_gap = item["x1"] - last_item["x2"]
-
-              last_width = last_item["x2"] - last_item["x1"]
-              char_width = last_width / max(len(last_item["orig"]["text"]), 1)
-
-              if horizontal_gap <= char_width * max_gap_ratio:
-                  last_line.append(item)
-              else:
-                  lines.append([item])
-          else:
-              lines.append([item])
-
-      # -------- Step 4: Merge boxes & texts --------
-      merged_texts = []
-
-      for line in lines:
-          line.sort(key=lambda i: i["x1"])
-
-          x1 = min(i["x1"] for i in line)
-          y1 = min(i["y1"] for i in line)
-          x2 = max(i["x2"] for i in line)
-          y2 = max(i["y2"] for i in line)
-
-          # Smart space insertion
-          text_parts = []
-          for i, curr in enumerate(line):
-              if i > 0:
-                  prev = line[i - 1]
-                  gap = curr["x1"] - prev["x2"]
-
-                  prev_char_width = (
-                      (prev["x2"] - prev["x1"]) /
-                      max(len(prev["orig"]["text"]), 1)
-                  )
-
-                  if gap > prev_char_width:
-                      text_parts.append(" ")
-
-              text_parts.append(curr["orig"]["text"])
-
-          text = "".join(text_parts)
-
-          # Probability aggregation (length-weighted)
-          prob = sum(
-              len(i["orig"]["text"]) * i["orig"]["prob"]
-              for i in line
-          ) / sum(len(i["orig"]["text"]) for i in line)
-
-          merged_texts.append({
-              "box": self.xyxy_to_box(x1, y1, x2, y2),
-              "text": text,
-              "prob": float(prob)
-          })
-
-      return merged_texts
 
     # -----------------------------
     # UI detection
@@ -242,79 +38,122 @@ class TessaractDataExtractor:
         if original_image is None:
             print(f"Error: Could not load image from {img_path}")
             return processed_data
-        
+
         print("Performing Tesseract OCR on detected UI elements...\n")
-        
+
         for item in processed_data:
+            # adding padding 5 and also ensure the padding value does not go beyond image boundaries
             x1, y1, x2, y2 = map(int, item["box"])
-            cropped_image = original_image[y1:y2, x1:x2]
+            cropped_x1 = max(0, x1)
+            cropped_y1 = max(0, y1)
+            cropped_x2 = min(original_image.shape[1], x2)
+            cropped_y2 = min(original_image.shape[0], y2)
+            cropped_image = original_image[cropped_y1:cropped_y2, cropped_x1:cropped_x2]
 
             if cropped_image.size == 0:
                 item["texts"] = []
                 continue
 
-            gray = cv2.cvtColor(cropped_image, cv2.COLOR_BGR2GRAY)
             data = pytesseract.image_to_data(
-                gray,
-                config=self.tesseract_config,
+                cropped_image,
+                lang="eng",
+                config=self.tesseract_config,  # e.g. "--oem 3 --psm 12"
                 output_type=pytesseract.Output.DICT
             )
 
-            raw_texts = []
+            lines = {}
 
+            # -----------------------------
+            # Group words into lines
+            # -----------------------------
             for i in range(len(data["text"])):
                 text = data["text"][i].strip()
-                # print(f"pytessarct text: {text}")
                 conf = int(data["conf"][i])
 
-                if not text or conf < 0:
+                # level 5 = word
+                if not text or conf <= 0.1 or data["level"][i] != 5:
                     continue
 
-                x = int(data["left"][i])
-                y = int(data["top"][i])
-                w = int(data["width"][i])
-                h = int(data["height"][i])
+                key = (
+                    data["block_num"][i],
+                    data["par_num"][i],
+                    data["line_num"][i]
+                )
 
-                raw_texts.append({
-                    "box": [
-                        [x, y],
-                        [x + w, y],
-                        [x + w, y + h],
-                        [x, y + h]
-                    ],
+                lines.setdefault(key, []).append(i)
+
+            line_texts = []
+
+            # -----------------------------
+            # Build line-level text + box
+            # -----------------------------
+            for indices in lines.values():
+                texts = [data["text"][i] for i in indices]
+                text = " ".join(texts)
+                # print(text)
+                x_min = min(data["left"][i] for i in indices)
+                y_min = min(data["top"][i] for i in indices)
+                x_max = max(data["left"][i] + data["width"][i] for i in indices)
+                y_max = max(data["top"][i] + data["height"][i] for i in indices)
+
+                line_texts.append({
                     "text": text,
-                    "prob": conf / 100.0
+                    "box": [
+                        [x_min, y_min],
+                        [x_max, y_min],
+                        [x_max, y_max],
+                        [x_min, y_max],
+                    ],
+                    "prob": min(int(data["conf"][i]) for i in indices) / 100.0
                 })
 
-            # 🔗 MERGE HORIZONTAL LINES HERE
-            # line_texts = self.merge_horizontal_texts(raw_texts)
-            # final_texts = self.merge_vertical_texts(line_texts)
-            item["texts"] = raw_texts
-        # Sort the each texts to find the header
-        # -------------------------------------
-        
-        for item in processed_data:
-            texts = item.get("texts", [])
-            if not texts:
-                continue
+            # -----------------------------
+            # Sort lines top → bottom
+            # -----------------------------
+            line_texts.sort(key=lambda x: x["box"][0][1])
 
-            if item["type"] == "text_field":
-                # Left → Right
-                item["texts"] = sorted(
-                    texts,
-                    key=lambda t: self.box_to_xyxy(t["box"])[0]  # x1
-                )
-            else:
-                # Top → Bottom
-                item["texts"] = sorted(
-                    texts,
-                    key=lambda t: self.box_to_xyxy(t["box"])[1]  # y1
-                )
-
-        # Header selection
-        for item in processed_data:
-            if item["texts"]:
-                item["header"] = item["texts"][0]["text"]
-                item["texts"] = item["texts"][:]
+            item["texts"] = line_texts
 
         return processed_data
+    
+    @staticmethod
+    def texts_extraction_from_image(img_path: str):
+        original_image = cv2.imread(img_path)
+
+        if original_image is None:
+            print(f"Error: Could not load image from {img_path}")
+            return []
+
+        data = pytesseract.image_to_data(
+            original_image,
+            lang="eng",
+            config="--oem 3 --psm 12",  # e.g. "--oem 3 --psm 12"
+            output_type=pytesseract.Output.DICT
+        )
+
+        processed_data = []
+
+        for i in range(len(data["text"])):
+            text = data["text"][i].strip()
+            conf = float(data["conf"][i])
+
+            # level 5 = word
+            if not text or conf <= 0 or data["level"][i] != 5:
+                continue
+
+            x_min = data["left"][i]
+            y_min = data["top"][i]
+            x_max = x_min + data["width"][i]
+            y_max = y_min + data["height"][i]
+
+            box = [
+                [x_min, y_min],  # top-left
+                [x_max, y_min],  # top-right
+                [x_max, y_max],  # bottom-right
+                [x_min, y_max]   # bottom-left
+            ]
+
+            processed_data.append([text, box])
+
+        return processed_data
+
