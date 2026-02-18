@@ -7,7 +7,7 @@ import pytesseract
 
 class TessaractDataExtractor:
     def __init__(self, model_path: str):
-        self.tesseract_config = "--oem 3 --psm 12"
+        self.tesseract_config = "--oem 3 --psm 6"
         self.ui_element_extractor = UIElementDetector(model_path)
 
     # -----------------------------

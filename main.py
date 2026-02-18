@@ -68,11 +68,11 @@ def masking_by_header(header_texts: list, processed_data, img_path, output_dir="
         # annotated = mask_all_extracted_texts(img_path, processed_data, draw_bbox=False, fill_bbox_white=True)
         # img_name = img_path.split("/")[-1].split(".")[0]
         # cv2.imwrite(os.path.join(output_dir, f"masked_by_headers_{img_name}.png"), cv2.cvtColor(annotated, cv2.COLOR_RGB2BGR))
-        if not is_found_any_header:
-            all_texts = TessaractDataExtractor.texts_extraction_from_image(img_path)
-            annotated = annotate_targeted_texts(img_path, all_texts, draw_bbox=False, fill_bbox_white=True)
-            img_name = img_path.split("/")[-1].split(".")[0]
-            cv2.imwrite(os.path.join(output_dir, f"masked_by_headers_{img_name}.png"), cv2.cvtColor(annotated, cv2.COLOR_RGB2BGR))
+        # if not is_found_any_header:
+        all_texts = TessaractDataExtractor.texts_extraction_from_image(img_path)
+        annotated = annotate_targeted_texts(img_path, all_texts, draw_bbox=False, fill_bbox_white=True)
+        img_name = img_path.split("/")[-1].split(".")[0]
+        cv2.imwrite(os.path.join(output_dir, f"masked_by_headers_{img_name}.png"), cv2.cvtColor(annotated, cv2.COLOR_RGB2BGR))
             
         return
     
