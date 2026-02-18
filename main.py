@@ -8,7 +8,8 @@ from common.logger import Logger
 
 from data_extraction.data_extraction_tessaract import TessaractDataExtractor
 from data_extraction.data_extractor_easyocr import EasyOcrDataExtractor
-from utils.helper import remove_unnecessary_characters
+from utils.table_data_handling import process_table_data
+from utils.helper import remove_unnecessary_characters, save_ocr_data
 from utils.merge_texts import box_stats, merge_texts
 from utils.merge_ocr_data import merge_ocr_data
 from utils.drawing import annotate_targeted_texts, draw_box_on_all_texts, mask_all_extracted_texts
@@ -16,8 +17,7 @@ from masking.masking_by_header import search_text_by_header
 
 logger = Logger.get_logger("main")
 
-
-def header_selection(processed_data):
+def header_selection(processed_data, image_path):
     """Select header from extracted texts and assign to 'header' key."""
     for item in processed_data:
         if item["texts"]:
@@ -28,8 +28,13 @@ def header_selection(processed_data):
             elif item["type"] == "top_down_text_field":
                 # top to bottom sort
                 item["texts"].sort(key=lambda x: box_stats(x["box"])["y_min"])
-                
+            elif item["type"] == "table_column":
+                # we will take help in morphological operation in that case
+                header, text_boxes = process_table_data(item["texts"], item["box"], image_path)
+                item["texts"] = text_boxes
+                    
             item["header"] = remove_unnecessary_characters(item["texts"][0]["text"])
+            # print(f" Header: {item['header']} for type: {item['type']}")
             item["texts"] = item["texts"][1:]
             
     return processed_data
@@ -50,9 +55,12 @@ def masking_by_header(header_texts: list, processed_data, img_path, output_dir="
     """Mask texts based on multiple headers."""
     # multiple headers may be provided, mask each one by one and show in single image
     texts_to_annotate = []
+    is_found_any_header = False
     for header_text in header_texts:
-        texts = search_text_by_header(processed_data, header_text, match_threshold=0.95)
+        texts, match_result = search_text_by_header(processed_data, header_text, match_threshold=0.95)
         texts_to_annotate.extend(texts)
+        if match_result:
+            is_found_any_header = True
 
     if not texts_to_annotate:
         logger.warning(f"Sorry! No texts found for headers: {header_texts}")
@@ -60,11 +68,12 @@ def masking_by_header(header_texts: list, processed_data, img_path, output_dir="
         # annotated = mask_all_extracted_texts(img_path, processed_data, draw_bbox=False, fill_bbox_white=True)
         # img_name = img_path.split("/")[-1].split(".")[0]
         # cv2.imwrite(os.path.join(output_dir, f"masked_by_headers_{img_name}.png"), cv2.cvtColor(annotated, cv2.COLOR_RGB2BGR))
-        all_texts = TessaractDataExtractor.texts_extraction_from_image(img_path)
-        annotated = annotate_targeted_texts(img_path, all_texts, draw_bbox=False, fill_bbox_white=True)
-        img_name = img_path.split("/")[-1].split(".")[0]
-        cv2.imwrite(os.path.join(output_dir, f"masked_by_headers_{img_name}.png"), cv2.cvtColor(annotated, cv2.COLOR_RGB2BGR))
-        
+        if not is_found_any_header:
+            all_texts = TessaractDataExtractor.texts_extraction_from_image(img_path)
+            annotated = annotate_targeted_texts(img_path, all_texts, draw_bbox=False, fill_bbox_white=True)
+            img_name = img_path.split("/")[-1].split(".")[0]
+            cv2.imwrite(os.path.join(output_dir, f"masked_by_headers_{img_name}.png"), cv2.cvtColor(annotated, cv2.COLOR_RGB2BGR))
+            
         return
     
     annotated = annotate_targeted_texts(img_path, texts_to_annotate, draw_bbox=True, fill_bbox_white=True)
@@ -78,7 +87,8 @@ def main(headers_text: list, image_path: str, model_path: str):
     tessaract_ocr_dex = TessaractDataExtractor(model_path)
 
     # make outputs directory
-    output_dir = "outputs"
+    image_name = image_path.split("/")[-1].split(".")[0]
+    output_dir = f"outputs/{image_name}"
     os.makedirs(output_dir, exist_ok=True)
 
     # Step-1: Extract data from both OCRs
@@ -90,17 +100,14 @@ def main(headers_text: list, image_path: str, model_path: str):
     
     # merge horizontal texts and vertical texts with small gap
     processed_data = merge_texts(tessaract_ocr_data)
-    
     # Now select header
-    processed_data = header_selection(processed_data)
+    processed_data = header_selection(processed_data, image_path)
 
-    # save processed data for further testing
-    with open("outputs/processed_data.json", "w") as f:
-        json.dump(processed_data, f, indent=4)
-
+    # Save extracted text with headers
+    save_ocr_data(image_path, processed_data, output_dir)
     # This drawing is optional, just for visualization
-    intermediate_drawing(image_path, processed_data)
-
+    intermediate_drawing(image_path, processed_data, output_dir)
+    
     # Step-4: Targeted masking
     masking_by_header(headers_text, processed_data, image_path, output_dir)
 
