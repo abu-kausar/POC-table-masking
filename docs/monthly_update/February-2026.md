@@ -190,3 +190,30 @@ Current Picture(Solved):
   <br>
   <em>Figure 1: Header name with accurate masked</em>
 </p>
+
+end
+---
+
+## 2026/02/23
+TODO (Solve these Issues: [Issues](https://github.com/abu-kausar/POC-table-masking/issues))
+- [ ] Small Icon or text create Noise
+
+![Noise](../resources/small_text_noise.png)
+
+*Remove the above noise*
+---
+
+## 2026/02/24
+- [ ] Writing 100 Test Case [🔗](https://github.com/abu-kausar/POC-table-masking/issues/33)
+We need more than 100 test case for finding accuracy of our pipeline.
+---
+
+## 2026/02/25
+A table may contains only header without entries. So, when searching algorithm applied It masking all text although header match with user expected header.
+- [ ] All masking when table contains only header
+
+<p align="center">
+  <img src="../resources/empty_entry_with_header.png" alt="empty entry image">
+  <br>
+  <em>Header name with with empty entry</em>
+</p>
