@@ -107,9 +107,9 @@ def visualize_annotations(dataset_dir, num_images=9, grid_cols=3, seed=42):
     
     # Display the image
     plt.figure(figsize=(15, 10))
-    plt.imshow(img)
     plt.axis('off')
     plt.title('Visualization of Annotated Images')
+    plt.imshow(img)
     plt.savefig(os.path.join(output_dir, 'visualization_of_annotated_images.png'), dpi=300, bbox_inches='tight')
     # Save the figure to a file
     plt.close()
@@ -174,3 +174,16 @@ def split_dataset(dataset_dir, output_dir, train_ratio=0.8, seed=42):
     print(f"Train images: {len(train_images)}")
     print(f"Validation images: {len(val_images)}")
 
+
+
+if __name__ == "__main__":
+    # ---------------- CONFIG ----------------
+    DATASET_DIR = "train/label-studio-annotation-2026-02-13"
+    IMAGE_DIR = os.path.join(DATASET_DIR, "images")
+    LABEL_DIR = os.path.join(DATASET_DIR, "labels")
+    CLASSES_FILE = os.path.join(DATASET_DIR, "classes.txt")
+
+    NUM_IMAGES = 9
+    GRID_COLS = 3
+    SEED = 42
+    visualize_annotations(dataset_dir=DATASET_DIR, num_images=NUM_IMAGES, grid_cols=GRID_COLS)

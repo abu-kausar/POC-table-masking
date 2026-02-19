@@ -7,3 +7,6 @@ experiments
 *.log
 .vscode
 outputs
+label-studio-annotation-*
+train/visualizations
+*.ipynb
