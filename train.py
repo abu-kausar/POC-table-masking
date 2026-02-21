@@ -69,8 +69,8 @@ def parse_args():
 
     # OPTIONAL
     parser.add_argument("--model", type=str, default="yolov8l.pt")
-    parser.add_argument("--device", type=str, default="cuda")
-    parser.add_argument("--project", type=str, default="runs/train")
+    parser.add_argument("--device", type=str, default="cpu")
+    parser.add_argument("--project", type=str, default="train/runs/train")
     parser.add_argument("--name", type=str, default="exp")
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--patience", type=int, default=50)
