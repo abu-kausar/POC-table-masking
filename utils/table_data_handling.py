@@ -2,8 +2,6 @@ import os
 import numpy as np
 import cv2
 
-from utils.morphological_operation import get_word_bounding_boxes_from_image
-
 def xywh_to_xyxy(box):
     x, y, w, h = box
     return (x, y, x + w, y + h)
@@ -53,6 +51,79 @@ def rect_intersection(box1, box2):
         x_right - x_left,
         y_bottom - y_top
     )
+    
+def refine_mask_with_morphology(mask, output_path=None):
+    """
+    Refine mask using morphological operation to better separate words.
+    
+    Args:
+        mask_path (str): Path to the binary mask image.
+        output_path (str, optional): Path to save the refined mask. If None, it won't be saved.
+    Returns:
+        np.ndarray: Refined binary mask.
+    """
+    
+    # Invert if mas has white bacground (text is white on black is better for connected components)
+    if np.mean(mask) > 127:
+        mask = cv2.bitwise_not(mask)
+        # print("Mask inverted: background was white, now black")
+    # Apply morphological opening to remove noise
+    kernel_open = np.ones((2,2), np.uint8)
+    mask_opened = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel_open, iterations=1)
+    
+    # save refined mask
+    if output_path:
+        # os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        cv2.imwrite(output_path, mask_opened)
+
+    return mask_opened
+
+def get_word_bounding_boxes_from_image(image_path, min_area=20, max_area=50000):
+    """
+    Get bounding boxes of words from the binary mask.
+    
+    Args:
+        mask_path (str): Path to the binary mask image.
+        min_area (int): Minimum area of connected component to be considered a word.
+        max_area (int): Maximum area of connected component to be considered a word.
+    Returns:
+        List[Tuple[int, int, int, int]]: List of bounding boxes (x, y, w, h) for each detected word.
+    """
+    # Read original image in grayscale
+    img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    
+    # Step-1: Apply erosion to separate connected words
+    kernel = np.ones((4, 4), np.uint8)
+    img_erosion = cv2.erode(img, kernel, iterations=3)
+    
+    # Step-2: Refine mask with morphological operations
+    refined_mask = refine_mask_with_morphology(img_erosion)
+    
+    # Step-3: Make Binary Image and Find Connected Components
+    # make binary image on refined_mask
+    _, refined_mask_binary = cv2.threshold(refined_mask, 90, 255, cv2.THRESH_BINARY)
+    # Find connected components
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(refined_mask_binary, connectivity=8)
+
+    FILL_THRESHOLD = 0.25   # tune this (0.9 = very strict)
+
+    boxes = []
+
+    for i in range(1, num_labels):  # skip background
+        x = stats[i, cv2.CC_STAT_LEFT]
+        y = stats[i, cv2.CC_STAT_TOP]
+        w = stats[i, cv2.CC_STAT_WIDTH]
+        h = stats[i, cv2.CC_STAT_HEIGHT]
+        area = stats[i, cv2.CC_STAT_AREA]
+
+        bbox_area = w * h
+        fill_ratio = area / bbox_area
+
+        if fill_ratio >= FILL_THRESHOLD:
+            boxes.append((x, y, w, h))
+
+    return img_erosion, refined_mask, refined_mask_binary, boxes
+
 
 def process_table_data(texts: list, det_box, image_path: str):
     """
